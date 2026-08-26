@@ -14,6 +14,9 @@ function Navbars() {
 
   const navigate = useNavigate();
 
+  // =========================
+  // SEARCH
+  // =========================
 
   const handleSearch = () => {
 
@@ -31,171 +34,228 @@ function Navbars() {
   };
 
 
-  // Logout
+  // =========================
+  // LOGOUT
+  // =========================
+
   const handleLogout = () => {
+
     localStorage.removeItem("token");
+
     navigate("/login");
+
     setMenuOpen(false);
+
+  };
+
+
+  // =========================
+  // CART
+  // =========================
+
+  const handleCart = () => {
+
+    navigate("/cart");
+
+    setMenuOpen(false);
+
+  };
+
+
+  // =========================
+  // WISHLIST
+  // =========================
+
+  const handleWishlist = () => {
+
+    navigate("/wishlist");
+
+    setMenuOpen(false);
+
   };
 
 
   return (
+
     <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
 
       <nav className="max-w-7xl h-20 mx-auto flex justify-between items-center px-5">
 
 
-        {/* Logo */}
+        {/* =========================
+            LOGO
+        ========================= */}
 
         <Link
           to="/"
           className="text-2xl font-extrabold"
         >
+
           Gr
+
           <span className="text-orange-500 text-[35px]">
             o
           </span>
+
           cify
+
         </Link>
 
 
 
-        {/* Desktop Menu */}
+        {/* =========================
+            DESKTOP MENU
+        ========================= */}
 
         <ul className="hidden md:flex items-center gap-10">
 
           <li>
+
             <Link
               to="/"
               className="font-semibold hover:text-orange-500"
             >
               Home
             </Link>
+
           </li>
 
 
           <li>
+
             <Link
               to="/about"
               className="font-semibold hover:text-orange-500"
             >
               About Us
             </Link>
+
           </li>
 
 
           <li>
+
             <Link
               to="/processes"
               className="font-semibold hover:text-orange-500"
             >
               Process
             </Link>
+
           </li>
 
 
           <li>
+
             <Link
               to="/contact"
               className="font-semibold hover:text-orange-500"
             >
               Contact Us
             </Link>
-          </li>
 
+          </li>
 
         </ul>
 
 
 
-        {/* Desktop Right Section */}
+        {/* =========================
+            DESKTOP RIGHT SECTION
+        ========================= */}
 
         <div className="hidden md:flex items-center gap-4">
 
 
-          {/* Search */}
+          {/* SEARCH */}
 
           <div className="rounded-full border-2 border-orange-500 flex items-center overflow-hidden">
 
-
             <input
-
               type="text"
-
               placeholder="Search products..."
-
               value={search}
-
               onChange={(e) => setSearch(e.target.value)}
-
               onKeyDown={(e) => {
 
                 if (e.key === "Enter") {
+
                   handleSearch();
+
                 }
 
               }}
-
               className="w-52 px-4 py-2 outline-none"
-
             />
 
 
             <button
-
               onClick={handleSearch}
-
               className="h-11 w-11 bg-gradient-to-b from-red-600 to-orange-500 text-white flex justify-center items-center"
-
             >
 
               <IoSearch />
 
             </button>
 
-
           </div>
 
 
 
-          {/* Icons */}
+          {/* =========================
+              WISHLIST
+          ========================= */}
 
-          <button className="text-2xl hover:text-orange-500">
+          <button
+            onClick={handleWishlist}
+            className="text-2xl hover:text-orange-500 cursor-pointer"
+          >
 
             <AiFillHeart />
 
           </button>
 
 
-          <button className="text-2xl hover:text-orange-500">
+
+          {/* =========================
+              CART
+          ========================= */}
+
+          <button
+            onClick={handleCart}
+            className="text-2xl hover:text-orange-500 cursor-pointer"
+          >
 
             <RiShoppingBag4Fill />
 
           </button>
 
 
-          {/* Logout */}
+
+          {/* =========================
+              LOGOUT
+          ========================= */}
 
           <button
             onClick={handleLogout}
             className="px-4 py-2 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600"
           >
-            Logout
-          </button>
 
+            Logout
+
+          </button>
 
         </div>
 
 
 
-        {/* Mobile Menu Button */}
+        {/* =========================
+            MOBILE MENU BUTTON
+        ========================= */}
 
         <button
-
           onClick={() => setMenuOpen(!menuOpen)}
-
           className="md:hidden text-3xl"
-
         >
 
           {
@@ -206,73 +266,60 @@ function Navbars() {
               <HiMenu />
           }
 
-
         </button>
-
 
       </nav>
 
 
 
-
-      {/* Mobile Menu */}
+      {/* =========================
+          MOBILE MENU
+      ========================= */}
 
       {
         menuOpen &&
 
         <div className="md:hidden bg-white border-t shadow-lg">
 
-
           <div className="p-5 flex flex-col gap-5">
 
 
-
-            {/* Mobile Search */}
-
+            {/* MOBILE SEARCH */}
 
             <div className="rounded-full border-2 border-orange-500 flex items-center overflow-hidden">
 
-
               <input
-
                 type="text"
-
                 placeholder="Search products..."
-
                 value={search}
-
                 onChange={(e) => setSearch(e.target.value)}
-
                 onKeyDown={(e) => {
 
                   if (e.key === "Enter") {
+
                     handleSearch();
+
                   }
 
                 }}
-
                 className="flex-1 px-4 py-2 outline-none"
-
               />
 
 
               <button
-
                 onClick={handleSearch}
-
                 className="h-11 w-11 bg-gradient-to-b from-red-600 to-orange-500 text-white flex justify-center items-center"
-
               >
 
                 <IoSearch />
 
               </button>
 
-
             </div>
 
 
 
+            {/* HOME */}
 
             <Link
               to="/"
@@ -283,6 +330,8 @@ function Navbars() {
 
 
 
+            {/* ABOUT */}
+
             <Link
               to="/about"
               onClick={() => setMenuOpen(false)}
@@ -291,6 +340,8 @@ function Navbars() {
             </Link>
 
 
+
+            {/* PROCESS */}
 
             <Link
               to="/processes"
@@ -301,6 +352,8 @@ function Navbars() {
 
 
 
+            {/* CONTACT */}
+
             <Link
               to="/contact"
               onClick={() => setMenuOpen(false)}
@@ -310,42 +363,62 @@ function Navbars() {
 
 
 
+            {/* =========================
+                MOBILE ICONS
+            ========================= */}
+
             <div className="flex gap-6 text-2xl">
 
 
-              <button>
+              {/* WISHLIST */}
+
+              <button
+                onClick={handleWishlist}
+                className="cursor-pointer"
+              >
+
                 <AiFillHeart />
+
               </button>
 
 
-              <button>
+
+              {/* CART */}
+
+              <button
+                onClick={handleCart}
+                className="cursor-pointer"
+              >
+
                 <RiShoppingBag4Fill />
-              </button>
 
+              </button>
 
             </div>
 
 
-            {/* Mobile Logout */}
+
+            {/* MOBILE LOGOUT */}
 
             <button
               onClick={handleLogout}
               className="w-fit px-4 py-2 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600"
             >
+
               Logout
+
             </button>
 
-
           </div>
-
 
         </div>
 
       }
 
-
     </header>
+
   );
+
 }
 
 

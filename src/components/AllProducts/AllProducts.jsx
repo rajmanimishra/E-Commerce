@@ -1,10 +1,10 @@
-// AllProducts.jsx
-
-import React from 'react'
+import React, { useEffect, useState } from "react";
 import Buttons from "../Buttons/Buttons";
 import { useLocation } from "react-router-dom";
+import { AiFillHeart } from "react-icons/ai";
+import { useWishlist } from "../CartContext/WishlistContext";
 
-
+// Product Images
 import Banana from "../../assets/banana.png";
 import Tofu from "../../assets/tofu.png";
 import Yogurt from "../../assets/yogurt.png";
@@ -29,75 +29,117 @@ import Beef from "../../assets/beef.png";
 
 const AllProducts = () => {
 
-
     const location = useLocation();
 
-
-    const search = new URLSearchParams(location.search)
-        .get("search")
-        ?.toLowerCase() || "";
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
 
 
+    // Wishlist
+    const {
+        addToWishlist,
+        removeFromWishlist,
+        isInWishlist
+    } = useWishlist();
 
-    const filteredProducts = smallCards.filter((item) =>
-        item.title.toLowerCase().includes(search)
+
+    const search =
+        new URLSearchParams(location.search)
+            .get("search")
+            ?.toLowerCase() || "";
+
+
+    // MongoDB image filename -> React local asset
+    const imageMap = {
+
+        "banana.png": Banana,
+        "tofu.png": Tofu,
+        "yogurt.png": Yogurt,
+        "slice-cheese.png": Slice_Cheese,
+        "slice_cheese.png": Slice_Cheese,
+        "shrimp.png": Shrimp,
+        "salmon.png": Salmon,
+        "ricotta-cheese.png": RicottaCheese,
+        "ricottacheese.png": RicottaCheese,
+        "pineapple.png": Pineapple,
+        "milk.png": Milk,
+        "lettuce.png": Lettuce,
+        "kiwi.png": Kiwi,
+        "grapes.png": Grapes,
+        "eggs.png": Eggs,
+        "eggplant.png": Eggplant,
+        "cheese.png": Cheese,
+        "capsicum.png": Capsicum,
+        "cabbage.png": Cabbage,
+        "butter.png": Butter,
+        "broccoli.png": Broccoli,
+        "beef.png": Beef,
+
+    };
+
+
+    // Fetch products from MongoDB
+    useEffect(() => {
+
+        const fetchProducts = async () => {
+
+            try {
+
+                const response = await fetch(
+                    "http://localhost:3000/api/products"
+                );
+
+                const data = await response.json();
+
+                if (data.success) {
+
+                    setProducts(data.products);
+
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Error fetching products:",
+                    error
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchProducts();
+
+    }, []);
+
+
+    // Wishlist Handler
+    const handleWishlist = async (productId) => {
+
+        if (isInWishlist(productId)) {
+
+            await removeFromWishlist(productId);
+
+        } else {
+
+            await addToWishlist(productId);
+
+        }
+
+    };
+
+
+    // Search filter
+    const filteredProducts = products.filter(
+        (item) =>
+            item.title
+                .toLowerCase()
+                .includes(search)
     );
-
-
-
-    const renderSmallCards = filteredProducts.map((smallCard) => {
-
-        return (
-            <div
-                key={smallCard.id}
-                className="w-full sm:w-[48%] lg:w-[31%] xl:w-[23%] bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300"
-            >
-
-                {/* Image */}
-
-                <div className="h-52 flex items-center justify-center bg-white p-4">
-
-                    <img
-                        src={smallCard.image}
-                        alt={smallCard.title}
-                        className="w-full h-full object-contain"
-                    />
-
-                </div>
-
-
-
-                {/* Content */}
-
-                <div className="bg-zinc-100 p-6 text-center">
-
-
-                    <h3 className="text-xl md:text-2xl font-bold">
-
-                        {smallCard.title}
-
-                    </h3>
-
-
-
-                    <p className="text-orange-500 text-xl font-semibold mt-2 mb-5">
-
-                        ₹{smallCard.price}
-
-                    </p>
-
-
-
-                    <Buttons content="Add to Cart" />
-
-
-                </div>
-
-
-            </div>
-        );
-    });
-
 
 
     return (
@@ -107,22 +149,133 @@ const AllProducts = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 
-                <div className="flex flex-wrap justify-center gap-6">
+                {/* Loading */}
+
+                {loading && (
+
+                    <div className="flex justify-center">
+
+                        <h2 className="text-2xl font-bold text-gray-500">
+
+                            Loading Products...
+
+                        </h2>
+
+                    </div>
+
+                )}
 
 
-                    {
-                        renderSmallCards.length > 0
-                            ?
-                            renderSmallCards
-                            :
+                {/* Products */}
+
+                {!loading && (
+
+                    <div className="flex flex-wrap justify-center gap-6">
+
+                        {filteredProducts.length > 0 ? (
+
+                            filteredProducts.map((product) => (
+
+                                <div
+                                    key={product._id}
+                                    className="relative w-full sm:w-[48%] lg:w-[31%] xl:w-[23%] bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300"
+                                >
+
+
+                                    {/* Wishlist Heart */}
+
+                                    <button
+                                        onClick={() =>
+                                            handleWishlist(
+                                                product._id
+                                            )
+                                        }
+                                        className="absolute top-4 right-4 z-10 text-3xl hover:scale-110 transition-transform"
+                                        title={
+                                            isInWishlist(
+                                                product._id
+                                            )
+                                                ? "Remove from wishlist"
+                                                : "Add to wishlist"
+                                        }
+                                    >
+
+                                        <AiFillHeart
+                                            className={
+                                                isInWishlist(
+                                                    product._id
+                                                )
+                                                    ? "text-red-500"
+                                                    : "text-gray-400"
+                                            }
+                                        />
+
+                                    </button>
+
+
+                                    {/* Image */}
+
+                                    <div className="h-52 flex items-center justify-center bg-white p-4">
+
+                                        <img
+                                            src={
+                                                imageMap[
+                                                product.image
+                                                ]
+                                            }
+                                            alt={product.title}
+                                            className="w-full h-full object-contain"
+                                        />
+
+                                    </div>
+
+
+                                    {/* Content */}
+
+                                    <div className="bg-zinc-100 p-6 text-center">
+
+                                        <h3 className="text-xl md:text-2xl font-bold">
+
+                                            {product.title}
+
+                                        </h3>
+
+
+                                        <p className="text-orange-500 text-xl font-semibold mt-2 mb-5">
+
+                                            ₹{product.price}
+
+                                        </p>
+
+
+                                        {/* Add To Cart */}
+
+                                        <Buttons
+                                            content="Add to Cart"
+                                            productId={
+                                                product._id
+                                            }
+                                        />
+
+                                    </div>
+
+                                </div>
+
+                            ))
+
+                        ) : (
+
                             <h2 className="text-2xl font-bold text-red-500">
+
                                 No Product Found
+
                             </h2>
-                    }
 
+                        )}
 
-                </div>
+                    </div>
 
+                )}
 
             </div>
 
@@ -134,57 +287,3 @@ const AllProducts = () => {
 
 
 export default AllProducts;
-
-
-
-
-
-const smallCards = [
-
-    { id: 1, image: Banana, title: "Banana", price: 40 },
-
-    { id: 2, image: Tofu, title: "Tofu", price: 180 },
-
-    { id: 3, image: Yogurt, title: "Yogurt", price: 90 },
-
-    { id: 4, image: Slice_Cheese, title: "Slice Cheese", price: 220 },
-
-    { id: 5, image: Shrimp, title: "Shrimp", price: 350 },
-
-    { id: 6, image: Salmon, title: "Salmon", price: 480 },
-
-    { id: 7, image: RicottaCheese, title: "Ricotta Cheese", price: 280 },
-
-    { id: 8, image: Pineapple, title: "Pineapple", price: 70 },
-
-    { id: 9, image: Milk, title: "Milk", price: 60 },
-
-    { id: 10, image: Lettuce, title: "Lettuce", price: 55 },
-
-    { id: 11, image: Kiwi, title: "Kiwi", price: 180 },
-
-    { id: 12, image: Grapes, title: "Grapes", price: 120 },
-
-    { id: 13, image: Eggs, title: "Eggs", price: 95 },
-
-    { id: 14, image: Eggplant, title: "Eggplant", price: 45 },
-
-    { id: 15, image: Cheese, title: "Cheese", price: 250 },
-
-    { id: 16, image: Capsicum, title: "Capsicum", price: 80 },
-
-    { id: 17, image: Cabbage, title: "Cabbage", price: 40 },
-
-    { id: 18, image: Butter, title: "Butter", price: 210 },
-
-    { id: 19, image: Broccoli, title: "Broccoli", price: 140 },
-
-    { id: 20, image: Beef, title: "Beef", price: 650 },
-
-    { id: 24, image: Slice_Cheese, title: "Cheddar Slice", price: 240 },
-
-    { id: 29, image: Broccoli, title: "Fresh Broccoli", price: 160 },
-
-    { id: 30, image: Pineapple, title: "Sweet Pineapple", price: 95 },
-
-];
