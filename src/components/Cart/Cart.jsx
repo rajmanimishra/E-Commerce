@@ -75,7 +75,7 @@ const Cart = () => {
         try {
 
             const response = await fetch(
-                "http://localhost:3000/api/cart",
+                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart",
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -140,7 +140,7 @@ const Cart = () => {
         try {
 
             const response = await fetch(
-                `http://localhost:3000/api/cart/${productId}`,
+                `[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart/${productId}`,
                 {
                     method: "PUT",
 
@@ -227,7 +227,7 @@ const Cart = () => {
         try {
 
             const response = await fetch(
-                `http://localhost:3000/api/cart/${productId}`,
+                `[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart/${productId}`,
                 {
                     method: "DELETE",
 

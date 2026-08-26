@@ -29,7 +29,7 @@ export const CartProvider = ({ children }) => {
             setLoading(true);
 
             const response = await fetch(
-                "http://localhost:3000/api/cart",
+                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart",
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -71,7 +71,7 @@ export const CartProvider = ({ children }) => {
         try {
 
             const response = await fetch(
-                "http://localhost:3000/api/cart/add",
+                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart/add",
                 {
                     method: "POST",
 
@@ -132,7 +132,7 @@ export const CartProvider = ({ children }) => {
         try {
 
             const response = await fetch(
-                `http://localhost:3000/api/cart/${productId}`,
+                `[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart/${productId}`,
                 {
                     method: "PUT",
 
@@ -195,7 +195,7 @@ export const CartProvider = ({ children }) => {
         try {
 
             const response = await fetch(
-                `http://localhost:3000/api/cart/${productId}`,
+                `[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/cart/${productId}`,
                 {
                     method: "DELETE",
 

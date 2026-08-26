@@ -8,7 +8,7 @@ const Profile = () => {
             const token = localStorage.getItem("token");
 
             const response = await fetch(
-                "http://localhost:3000/api/auth/profile",
+                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/auth/profile",
                 {
                     method: "GET",
                     headers: {

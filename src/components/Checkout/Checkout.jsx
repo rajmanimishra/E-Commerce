@@ -213,7 +213,7 @@ const Checkout = () => {
             // ==================================
 
             const response = await fetch(
-                "http://localhost:3000/api/orders",
+                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/orders",
                 {
                     method: "POST",
 
@@ -325,8 +325,8 @@ const Checkout = () => {
 
                         <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${step >= 1
-                                    ? "bg-orange-500 text-white"
-                                    : "bg-gray-300 text-gray-600"
+                                ? "bg-orange-500 text-white"
+                                : "bg-gray-300 text-gray-600"
                                 }`}
                         >
                             1
@@ -334,8 +334,8 @@ const Checkout = () => {
 
                         <span
                             className={`ml-2 font-semibold ${step >= 1
-                                    ? "text-orange-500"
-                                    : "text-gray-500"
+                                ? "text-orange-500"
+                                : "text-gray-500"
                                 }`}
                         >
                             Delivery
@@ -347,8 +347,8 @@ const Checkout = () => {
 
                     <div
                         className={`w-20 md:w-32 h-1 mx-4 ${step === 2
-                                ? "bg-orange-500"
-                                : "bg-gray-300"
+                            ? "bg-orange-500"
+                            : "bg-gray-300"
                             }`}
                     ></div>
 
@@ -358,8 +358,8 @@ const Checkout = () => {
 
                         <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${step === 2
-                                    ? "bg-orange-500 text-white"
-                                    : "bg-gray-300 text-gray-600"
+                                ? "bg-orange-500 text-white"
+                                : "bg-gray-300 text-gray-600"
                                 }`}
                         >
                             2
@@ -367,8 +367,8 @@ const Checkout = () => {
 
                         <span
                             className={`ml-2 font-semibold ${step === 2
-                                    ? "text-orange-500"
-                                    : "text-gray-500"
+                                ? "text-orange-500"
+                                : "text-gray-500"
                                 }`}
                         >
                             Payment
@@ -575,9 +575,9 @@ const Checkout = () => {
 
                                 <label
                                     className={`flex items-center gap-4 border rounded-xl p-5 cursor-pointer transition ${paymentMethod ===
-                                            "Cash on Delivery"
-                                            ? "border-orange-500 bg-orange-50"
-                                            : "border-gray-200"
+                                        "Cash on Delivery"
+                                        ? "border-orange-500 bg-orange-50"
+                                        : "border-gray-200"
                                         }`}
                                 >
 
@@ -616,9 +616,9 @@ const Checkout = () => {
 
                                 <label
                                     className={`flex items-center gap-4 border rounded-xl p-5 mt-4 cursor-pointer transition ${paymentMethod ===
-                                            "Online Payment"
-                                            ? "border-orange-500 bg-orange-50"
-                                            : "border-gray-200"
+                                        "Online Payment"
+                                        ? "border-orange-500 bg-orange-50"
+                                        : "border-gray-200"
                                         }`}
                                 >
 
