@@ -86,7 +86,7 @@ const Products = () => {
             try {
 
                 const response = await fetch(
-                    "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/products"
+                    "https://e-commerce-z6p4.onrender.com/api/products"
                 );
 
                 const data = await response.json();

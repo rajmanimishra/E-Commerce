@@ -213,7 +213,7 @@ const Checkout = () => {
             // ==================================
 
             const response = await fetch(
-                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/orders",
+                "https://e-commerce-z6p4.onrender.com/api/orders",
                 {
                     method: "POST",
 

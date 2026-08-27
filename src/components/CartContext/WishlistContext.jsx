@@ -28,7 +28,7 @@ export const WishlistProvider = ({ children }) => {
             setLoading(true);
 
             const response = await fetch(
-                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/wishlist",
+                "https://e-commerce-z6p4.onrender.com/api/wishlist",
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -70,7 +70,7 @@ export const WishlistProvider = ({ children }) => {
         try {
 
             const response = await fetch(
-                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/wishlist/add",
+                "https://e-commerce-z6p4.onrender.com/api/wishlist/add",
                 {
                     method: "POST",
 
@@ -126,7 +126,7 @@ export const WishlistProvider = ({ children }) => {
         try {
 
             const response = await fetch(
-                `[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/wishlist/${productId}`,
+                `https://e-commerce-z6p4.onrender.com/api/wishlist/${productId}`,
                 {
                     method: "DELETE",
 

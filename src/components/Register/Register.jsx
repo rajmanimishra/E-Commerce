@@ -15,7 +15,7 @@ const Register = () => {
         try {
 
             const response = await fetch(
-                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/auth/register",
+                "https://e-commerce-z6p4.onrender.com/api/auth/register",
                 {
                     method: "POST",
                     headers: {

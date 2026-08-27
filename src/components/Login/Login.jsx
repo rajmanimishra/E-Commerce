@@ -13,7 +13,7 @@ const Login = () => {
 
         try {
             const response = await fetch(
-                "[https://e-commerce-z6p4.onrender.com](https://e-commerce-z6p4.onrender.com)/api/auth/login",
+                "https://e-commerce-z6p4.onrender.com/api/auth/login",
                 {
                     method: "POST",
                     headers: {
