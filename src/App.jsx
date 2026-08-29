@@ -1,3 +1,4 @@
+
 import React from "react";
 import Home from "./components/Home/Home";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -33,6 +34,9 @@ import { CartProvider } from "./components/CartContext/CartContext";
 // Wishlist Context
 import { WishlistProvider } from "./components/CartContext/WishlistContext";
 
+// AI Chatbot
+import AIChatbot from "./components/AIChatbot/AIChatbot";
+
 
 function App() {
 
@@ -48,10 +52,7 @@ function App() {
 
       children: [
 
-        // =========================
         // HOME
-        // =========================
-
         {
           path: "/",
           element: (
@@ -61,11 +62,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // FRUITS
-        // =========================
-
         {
           path: "/fruits",
           element: (
@@ -75,11 +72,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // DAIRY
-        // =========================
-
         {
           path: "/dairy",
           element: (
@@ -89,11 +82,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // SEAFOOD
-        // =========================
-
         {
           path: "/seafood",
           element: (
@@ -103,11 +92,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // ALL PRODUCTS
-        // =========================
-
         {
           path: "/allproducts",
           element: (
@@ -117,11 +102,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // ABOUT
-        // =========================
-
         {
           path: "/about",
           element: (
@@ -131,11 +112,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // PROCESSES
-        // =========================
-
         {
           path: "/processes",
           element: (
@@ -145,11 +122,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // CONTACT
-        // =========================
-
         {
           path: "/contact",
           element: (
@@ -159,11 +132,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // CART
-        // =========================
-
         {
           path: "/cart",
           element: (
@@ -173,11 +142,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // WISHLIST
-        // =========================
-
         {
           path: "/wishlist",
           element: (
@@ -187,11 +152,7 @@ function App() {
           ),
         },
 
-
-        // =========================
         // CHECKOUT
-        // =========================
-
         {
           path: "/checkout",
           element: (
@@ -204,31 +165,19 @@ function App() {
       ],
     },
 
-
-    // =========================
     // LOGIN
-    // =========================
-
     {
       path: "/login",
       element: <Login />,
     },
 
-
-    // =========================
     // REGISTER
-    // =========================
-
     {
       path: "/register",
       element: <Register />,
     },
 
-
-    // =========================
     // PROFILE
-    // =========================
-
     {
       path: "/profile",
       element: (
@@ -248,6 +197,9 @@ function App() {
 
         <RouterProvider router={router} />
 
+        {/* AI CHATBOT */}
+        <AIChatbot />
+
       </WishlistProvider>
 
     </CartProvider>
@@ -256,3 +208,4 @@ function App() {
 
 
 export default App;
+
