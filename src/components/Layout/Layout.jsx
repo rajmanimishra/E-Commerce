@@ -1,22 +1,29 @@
-import React from 'react'
-import Navbars from '../Nav/Navbars'
-import { Outlet } from "react-router-dom";
-import Footer from '../Footer/Footer';
-import ScrollToTop from "../ScrollToTop/ScrollToTop";
 
+import React from "react";
+import { Outlet } from "react-router-dom";
+
+import Navbar from "../Nav/Navbars";
+import Footer from "../Footer/Footer";
+import ScrollToTop from "../ScrollToTop/ScrollToTop";
+import AIChatbot from "../AIChatbot/AIChatbot";
 
 const Layout = () => {
     return (
-        <div>
-
+        <>
             <ScrollToTop />
-            <Navbars />
-            <Outlet />
+
+            <Navbar />
+
+            <main>
+                <Outlet />
+            </main>
+
             <Footer />
 
+            <AIChatbot />
+        </>
+    );
+};
 
-        </div>
-    )
-}
+export default Layout;
 
-export default Layout

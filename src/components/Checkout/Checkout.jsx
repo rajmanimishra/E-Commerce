@@ -46,7 +46,7 @@ const Checkout = () => {
     // ==========================================
 
     const [paymentMethod, setPaymentMethod] =
-        useState("Cash on Delivery");
+        useState("COD");
 
     // ==========================================
     // ORDER LOADING
@@ -141,18 +141,52 @@ const Checkout = () => {
         cartTotal - discount
     );
 
+
+    // ==========================================
+    // LOAD RAZORPAY SDK
+    // ==========================================
+
+    const readResponse = async (response) => {
+        const text = await response.text();
+
+        try {
+            return text ? JSON.parse(text) : {};
+        } catch {
+            return { message: "Server returned an invalid response." };
+        }
+    };
+
+    const loadRazorpay = () => {
+        return new Promise((resolve) => {
+            if (window.Razorpay) return resolve(true);
+
+            const existingScript = document.querySelector(
+                'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+            );
+
+            if (existingScript) {
+                existingScript.addEventListener("load", () => resolve(true), { once: true });
+                existingScript.addEventListener("error", () => resolve(false), { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+    };
+
     // ==========================================
     // PLACE ORDER
     // ==========================================
+
 
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
 
         const token = localStorage.getItem("token");
-
-        // ======================================
-        // CHECK LOGIN
-        // ======================================
 
         if (!token) {
             alert("Please login first.");
@@ -160,105 +194,186 @@ const Checkout = () => {
             return;
         }
 
-        // ======================================
-        // CHECK CART
-        // ======================================
-
         if (cartItems.length === 0) {
             alert("Your cart is empty.");
-            navigate("/allproducts");
             return;
         }
 
-        // ======================================
-        // PREPARE ORDER ITEMS
-        // ======================================
-
         const orderItems = cartItems.map((item) => {
-            const product = item.productId;
+            const product = item.productId || {};
+            const productId = product._id || (typeof product === "string" ? product : "");
+
+            if (!productId) {
+                throw new Error("A product in your cart is missing its details.");
+            }
 
             return {
-                productId: product._id,
-                title: product.title,
-                price: product.price,
-                quantity: item.quantity,
+                productId,
+                title: product.title || item.title || "Product",
+                price: Number(product.price || item.price || 0),
+                quantity: Number(item.quantity || 1),
             };
         });
 
-        // ======================================
-        // ORDER DATA
-        // ======================================
-
         const orderData = {
             items: orderItems,
-
             customer: formData,
-
             subtotal: cartTotal,
-
-            discount: discount,
-
+            discount,
             totalAmount: finalTotal,
-
             coupon: coupon.trim().toUpperCase(),
-
-            paymentMethod: paymentMethod,
+            paymentMethod,
         };
 
         try {
             setPlacingOrder(true);
 
-            // ==================================
-            // SEND ORDER TO BACKEND
-            // ==================================
+            // COD
+            if (paymentMethod === "COD") {
+                const response = await fetch(
+                    "https://e-commerce-z6p4.onrender.com/api/orders",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(orderData),
+                    }
+                );
 
-            const response = await fetch(
-                "https://e-commerce-z6p4.onrender.com/api/orders",
+                const data = await readResponse(response);
+
+                if (!response.ok || data.success === false) {
+                    throw new Error(data.message || "Failed to place order.");
+                }
+
+                alert("Order placed successfully!");
+                await fetchCart();
+                navigate("/orders");
+
+                return;
+            }
+
+            // Razorpay
+            const loaded = await loadRazorpay();
+
+            if (!loaded) {
+                alert("Razorpay failed to load.");
+                return;
+            }
+
+            const paymentResponse = await fetch(
+                "https://e-commerce-z6p4.onrender.com/api/orders/create-razorpay-order",
                 {
                     method: "POST",
-
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                     },
-
-                    body: JSON.stringify(orderData),
+                    body: JSON.stringify({ amount: finalTotal }),
                 }
             );
 
-            const data = await response.json();
+            const paymentData = await readResponse(paymentResponse);
 
-            // ==================================
-            // SUCCESS
-            // ==================================
-
-            if (response.ok && data.success) {
-                alert(
-                    "Order placed successfully! 🎉"
-                );
-
-                // Refresh cart
-                await fetchCart();
-
-                // Go home
-                navigate("/");
-            } else {
-                alert(
-                    data.message ||
-                    "Failed to place order."
-                );
+            if (!paymentResponse.ok || paymentData.success === false || !paymentData.orderId) {
+                throw new Error(paymentData.message || "Unable to create Razorpay order.");
             }
-        } catch (error) {
-            console.error(
-                "Place order error:",
-                error
-            );
 
-            alert(
-                "Something went wrong while placing your order."
-            );
-        } finally {
+            const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+            if (!razorpayKey) {
+                throw new Error("Razorpay key is missing from the frontend environment.");
+            }
+
+            const options = {
+                key: razorpayKey,
+                amount: paymentData.amount,
+                currency: paymentData.currency,
+                name: "Grocify",
+                description: "Fresh Grocery Payment",
+                order_id: paymentData.orderId,
+                handler: async (response) => {
+                    try {
+                    const verifyRes = await fetch(
+                        "https://e-commerce-z6p4.onrender.com/api/orders/verify-payment",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                            }),
+                        }
+                    );
+
+                    const verifyData = await readResponse(verifyRes);
+
+                    if (!verifyRes.ok || verifyData.success === false) {
+                        throw new Error(verifyData.message || "Payment verification failed.");
+                    }
+
+                    const orderRes = await fetch(
+                        "https://e-commerce-z6p4.onrender.com/api/orders",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                ...orderData,
+                                razorpayOrderId: verifyData.razorpayOrderId,
+                                razorpayPaymentId: verifyData.razorpayPaymentId,
+                                razorpaySignature: verifyData.razorpaySignature,
+                            }),
+                        }
+                    );
+
+                    const orderResult = await readResponse(orderRes);
+
+                    if (!orderRes.ok || orderResult.success === false) {
+                        throw new Error(orderResult.message || "Payment succeeded but order could not be saved.");
+                    }
+
+                    alert("Payment successful!");
+                    await fetchCart();
+                    navigate("/orders");
+                    } catch (error) {
+                        console.error("Payment completion error:", error);
+                        alert(error.message || "Payment could not be completed.");
+                    } finally {
+                        setPlacingOrder(false);
+                    }
+                },
+                theme: {
+                    color: "#F97316",
+                },
+                modal: {
+                    ondismiss: () => setPlacingOrder(false),
+                },
+            };
+
+            const razorpay = new window.Razorpay(options);
+            razorpay.on("payment.failed", (event) => {
+                setPlacingOrder(false);
+                alert(event.error?.description || "Payment failed. Please try again.");
+            });
+            razorpay.open();
+
+        } catch (error) {
+            console.error(error);
             setPlacingOrder(false);
+            alert(error.message || "Something went wrong.");
+        } finally {
+            if (paymentMethod === "COD") {
+                setPlacingOrder(false);
+            }
         }
     };
 
@@ -575,7 +690,7 @@ const Checkout = () => {
 
                                 <label
                                     className={`flex items-center gap-4 border rounded-xl p-5 cursor-pointer transition ${paymentMethod ===
-                                        "Cash on Delivery"
+                                        "COD"
                                         ? "border-orange-500 bg-orange-50"
                                         : "border-gray-200"
                                         }`}
@@ -584,10 +699,10 @@ const Checkout = () => {
                                     <input
                                         type="radio"
                                         name="payment"
-                                        value="Cash on Delivery"
+                                        value="COD"
                                         checked={
                                             paymentMethod ===
-                                            "Cash on Delivery"
+                                            "COD"
                                         }
                                         onChange={(e) =>
                                             setPaymentMethod(
@@ -616,7 +731,7 @@ const Checkout = () => {
 
                                 <label
                                     className={`flex items-center gap-4 border rounded-xl p-5 mt-4 cursor-pointer transition ${paymentMethod ===
-                                        "Online Payment"
+                                        "ONLINE"
                                         ? "border-orange-500 bg-orange-50"
                                         : "border-gray-200"
                                         }`}
@@ -625,10 +740,10 @@ const Checkout = () => {
                                     <input
                                         type="radio"
                                         name="payment"
-                                        value="Online Payment"
+                                        value="ONLINE"
                                         checked={
                                             paymentMethod ===
-                                            "Online Payment"
+                                            "ONLINE"
                                         }
                                         onChange={(e) =>
                                             setPaymentMethod(

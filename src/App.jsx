@@ -1,4 +1,3 @@
-
 import React from "react";
 import Home from "./components/Home/Home";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -33,158 +32,137 @@ import { CartProvider } from "./components/CartContext/CartContext";
 
 // Wishlist Context
 import { WishlistProvider } from "./components/CartContext/WishlistContext";
-
-// AI Chatbot
-import AIChatbot from "./components/AIChatbot/AIChatbot";
-
+import Orders from "./components/Orders/Orders";
+import OrderDetails from "./pages/OrderDetails";
 
 function App() {
 
   const router = createBrowserRouter([
 
-    // =========================
-    // PROTECTED APP ROUTES
-    // =========================
+    // =========================================
+    // PROTECTED APP
+    // =========================================
 
     {
       path: "/",
-      element: <Layout />,
+
+      element: (
+        <ProtectedRoute>
+          <Layout />
+        </ProtectedRoute>
+      ),
 
       children: [
 
         // HOME
         {
-          path: "/",
-          element: (
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          ),
+          index: true,
+          element: <Home />,
         },
 
         // FRUITS
         {
-          path: "/fruits",
-          element: (
-            <ProtectedRoute>
-              <Fruits />
-            </ProtectedRoute>
-          ),
+          path: "fruits",
+          element: <Fruits />,
         },
 
         // DAIRY
         {
-          path: "/dairy",
-          element: (
-            <ProtectedRoute>
-              <Dairy />
-            </ProtectedRoute>
-          ),
+          path: "dairy",
+          element: <Dairy />,
         },
 
         // SEAFOOD
         {
-          path: "/seafood",
-          element: (
-            <ProtectedRoute>
-              <SeaFood />
-            </ProtectedRoute>
-          ),
+          path: "seafood",
+          element: <SeaFood />,
         },
 
         // ALL PRODUCTS
         {
-          path: "/allproducts",
-          element: (
-            <ProtectedRoute>
-              <AllProducts />
-            </ProtectedRoute>
-          ),
+          path: "allproducts",
+          element: <AllProducts />,
         },
 
         // ABOUT
         {
-          path: "/about",
-          element: (
-            <ProtectedRoute>
-              <AboutUs />
-            </ProtectedRoute>
-          ),
+          path: "about",
+          element: <AboutUs />,
         },
 
         // PROCESSES
         {
-          path: "/processes",
-          element: (
-            <ProtectedRoute>
-              <Processes />
-            </ProtectedRoute>
-          ),
+          path: "processes",
+          element: <Processes />,
         },
 
         // CONTACT
         {
-          path: "/contact",
-          element: (
-            <ProtectedRoute>
-              <ContactUs />
-            </ProtectedRoute>
-          ),
+          path: "contact",
+          element: <ContactUs />,
         },
 
         // CART
         {
-          path: "/cart",
-          element: (
-            <ProtectedRoute>
-              <Cart />
-            </ProtectedRoute>
-          ),
+          path: "cart",
+          element: <Cart />,
         },
 
         // WISHLIST
         {
-          path: "/wishlist",
-          element: (
-            <ProtectedRoute>
-              <Wishlist />
-            </ProtectedRoute>
-          ),
+          path: "wishlist",
+          element: <Wishlist />,
         },
 
         // CHECKOUT
         {
-          path: "/checkout",
-          element: (
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          ),
+          path: "checkout",
+          element: <Checkout />,
+        },
+        // ORDERS
+        {
+          path: "orders",
+          element: <Orders />,
+        },
+
+        // ORDER DETAILS
+        {
+          path: "orders/:id",
+          element: <OrderDetails />,
         },
 
       ],
     },
 
-    // LOGIN
+
+    // =========================================
+    // PUBLIC ROUTES
+    // =========================================
+
     {
       path: "/login",
       element: <Login />,
     },
 
-    // REGISTER
     {
       path: "/register",
       element: <Register />,
     },
 
-    // PROFILE
+
+    // =========================================
+    // PROFILE - PROTECTED
+    // =========================================
+
     {
       path: "/profile",
+
       element: (
         <ProtectedRoute>
           <Profile />
         </ProtectedRoute>
       ),
+
     },
 
   ]);
@@ -197,9 +175,6 @@ function App() {
 
         <RouterProvider router={router} />
 
-        {/* AI CHATBOT */}
-        <AIChatbot />
-
       </WishlistProvider>
 
     </CartProvider>
@@ -208,4 +183,3 @@ function App() {
 
 
 export default App;
-
