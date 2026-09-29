@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-const API = "http://localhost:3000";
+const API = "https://e-commerce-z6p4.onrender.com";
 
 export default function OrderDetails() {
     const { id } = useParams();
@@ -144,8 +144,8 @@ export default function OrderDetails() {
                                     <div
                                         key={step}
                                         className={`px-4 py-2 rounded-full text-sm font-medium ${active
-                                                ? "bg-orange-500 text-white"
-                                                : "bg-gray-200 text-gray-600"
+                                            ? "bg-orange-500 text-white"
+                                            : "bg-gray-200 text-gray-600"
                                             }`}
                                     >
                                         {step}
@@ -217,8 +217,8 @@ export default function OrderDetails() {
                                 Status:
                                 <span
                                     className={`ml-2 font-semibold ${order.paymentStatus === "Paid"
-                                            ? "text-green-600"
-                                            : "text-yellow-600"
+                                        ? "text-green-600"
+                                        : "text-yellow-600"
                                         }`}
                                 >
                                     {order.paymentStatus}

@@ -1,12 +1,61 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = "http://localhost:3000";
+// Product Images
+import Banana from "../../assets/banana.png";
+import Tofu from "../../assets/tofu.png";
+import Yogurt from "../../assets/yogurt.png";
+import Slice_Cheese from "../../assets/slice-cheese.png";
+import Shrimp from "../../assets/shrimp.png";
+import Salmon from "../../assets/salmon.png";
+import RicottaCheese from "../../assets/ricotta-cheese.png";
+import Pineapple from "../../assets/pineapple.png";
+import Milk from "../../assets/milk.png";
+import Lettuce from "../../assets/lettuce.png";
+import Kiwi from "../../assets/kiwi.png";
+import Grapes from "../../assets/grapes.png";
+import Eggs from "../../assets/eggs.png";
+import Eggplant from "../../assets/eggplant.png";
+import Cheese from "../../assets/cheese.png";
+import Capsicum from "../../assets/capsicum.png";
+import Cabbage from "../../assets/cabbage.png";
+import Butter from "../../assets/butter.png";
+import Broccoli from "../../assets/broccoli.png";
+import Beef from "../../assets/beef.png";
+
+const API = "https://e-commerce-z6p4.onrender.com";
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // MongoDB image filename -> React local asset
+  const imageMap = {
+    "banana.png": Banana,
+    "tofu.png": Tofu,
+    "yogurt.png": Yogurt,
+    "slice-cheese.png": Slice_Cheese,
+    "slice_cheese.png": Slice_Cheese,
+    "shrimp.png": Shrimp,
+    "salmon.png": Salmon,
+    "ricotta-cheese.png": RicottaCheese,
+    "ricottacheese.png": RicottaCheese,
+    "pineapple.png": Pineapple,
+    "milk.png": Milk,
+    "lettuce.png": Lettuce,
+    "kiwi.png": Kiwi,
+    "grapes.png": Grapes,
+    "eggs.png": Eggs,
+    "eggplant.png": Eggplant,
+    "cheese.png": Cheese,
+    "capsicum.png": Capsicum,
+    "cabbage.png": Cabbage,
+    "butter.png": Butter,
+    "broccoli.png": Broccoli,
+    "beef.png": Beef,
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -97,7 +146,14 @@ export default function Orders() {
               <div>
                 <p className="text-sm text-gray-500">Date</p>
                 <p className="font-semibold">
-                  {new Date(order.createdAt).toLocaleDateString()}
+                  {new Date(order.createdAt).toLocaleString("en-IN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
                 </p>
               </div>
 
@@ -127,7 +183,7 @@ export default function Orders() {
                   >
                     <img
                       src={
-                        item.productId?.image ||
+                        imageMap[item.productId?.image] ||
                         "https://via.placeholder.com/80"
                       }
                       alt={item.title}
@@ -154,11 +210,10 @@ export default function Orders() {
                   <p>
                     Payment Status:
                     <span
-                      className={`ml-2 font-semibold ${
-                        order.paymentStatus === "Paid"
-                          ? "text-green-600"
-                          : "text-yellow-600"
-                      }`}
+                      className={`ml-2 font-semibold ${order.paymentStatus === "Paid"
+                        ? "text-green-600"
+                        : "text-yellow-600"
+                        }`}
                     >
                       {order.paymentStatus}
                     </span>
