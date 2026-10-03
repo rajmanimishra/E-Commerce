@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || (
@@ -17,16 +17,27 @@ const orderStatuses = [
 ];
 const emptyProduct = { title: "", price: "", image: "", category: "" };
 
+async function readResponse(response) {
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error(
+            `The API at ${API} returned a non-JSON response (HTTP ${response.status}). Check that the backend is running and the API URL is correct.`
+        );
+    }
+
+    return response.json();
+}
+
 async function request(path, options = {}) {
+    const isFormData = options.body instanceof FormData;
     const response = await fetch(`${API}${path}`, {
         ...options,
         headers: {
-            "Content-Type": "application/json",
+            ...(!isFormData && { "Content-Type": "application/json" }),
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             ...options.headers,
         },
     });
-    const data = await response.json();
+    const data = await readResponse(response);
 
     if (!response.ok) {
         throw new Error(data.message || "The request could not be completed.");
@@ -45,11 +56,18 @@ export default function AdminDashboard() {
     const [notice, setNotice] = useState("");
     const [editingProduct, setEditingProduct] = useState(null);
     const [productForm, setProductForm] = useState(emptyProduct);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
+    const imagePreviewRef = useRef("");
     const [showProductForm, setShowProductForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [refresh, setRefresh] = useState(0);
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    useEffect(() => () => {
+        if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current);
+    }, []);
 
     useEffect(() => {
         let active = true;
@@ -88,9 +106,18 @@ export default function AdminDashboard() {
         navigate("/admin/login");
     }
 
+    function selectImage(file) {
+        if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current);
+
+        imagePreviewRef.current = file ? URL.createObjectURL(file) : "";
+        setImagePreview(imagePreviewRef.current);
+        setImageFile(file);
+    }
+
     function startNewProduct() {
         setEditingProduct(null);
         setProductForm(emptyProduct);
+        selectImage(null);
         setShowProductForm(true);
         setError("");
         setNotice("");
@@ -104,6 +131,7 @@ export default function AdminDashboard() {
             image: product.image,
             category: product.category,
         });
+        selectImage(null);
         setShowProductForm(true);
         setError("");
         setNotice("");
@@ -119,17 +147,22 @@ export default function AdminDashboard() {
             const path = editingProduct
                 ? `/api/products/${editingProduct._id}`
                 : "/api/products";
+            const body = new FormData();
+            body.set("title", productForm.title);
+            body.set("price", String(Number(productForm.price)));
+            body.set("image", productForm.image);
+            body.set("category", productForm.category);
+            if (imageFile) body.set("imageFile", imageFile);
+
             const data = await request(path, {
                 method: editingProduct ? "PUT" : "POST",
-                body: JSON.stringify({
-                    ...productForm,
-                    price: Number(productForm.price),
-                }),
+                body,
             });
 
             setShowProductForm(false);
             setEditingProduct(null);
             setProductForm(emptyProduct);
+            selectImage(null);
             setNotice(data.message);
             setRefresh((value) => value + 1);
         } catch (requestError) {
@@ -282,7 +315,6 @@ export default function AdminDashboard() {
                                 {[
                                     ["title", "Product name", "text"],
                                     ["price", "Price (₹)", "number"],
-                                    ["image", "Image URL or filename", "text"],
                                     ["category", "Category", "text"],
                                 ].map(([field, label, type]) => (
                                     <label key={field} className="text-sm font-medium text-stone-700">
@@ -303,6 +335,42 @@ export default function AdminDashboard() {
                                         />
                                     </label>
                                 ))}
+                                <label className="text-sm font-medium text-stone-700">
+                                    Product image
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={(event) => selectImage(event.target.files?.[0] || null)}
+                                        className="mt-1.5 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:font-semibold hover:file:bg-stone-200"
+                                    />
+                                    <span className="mt-1 block text-xs font-normal text-stone-500">
+                                        JPG, PNG, or WebP. Maximum 5 MB.
+                                    </span>
+                                </label>
+                                <label className="text-sm font-medium text-stone-700">
+                                    Or use an image URL / existing filename
+                                    <input
+                                        type="text"
+                                        value={productForm.image}
+                                        onChange={(event) => setProductForm((current) => ({
+                                            ...current,
+                                            image: event.target.value,
+                                        }))}
+                                        required={!imageFile}
+                                        placeholder="https://... or banana.png"
+                                        className="mt-1.5 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 outline-none focus:border-orange-500"
+                                    />
+                                </label>
+                                {imagePreview && (
+                                    <div className="sm:col-span-2">
+                                        <p className="mb-2 text-sm font-medium text-stone-700">Image preview</p>
+                                        <img
+                                            src={imagePreview}
+                                            alt="Selected product preview"
+                                            className="h-28 w-28 rounded-lg border border-stone-200 bg-white object-contain p-2"
+                                        />
+                                    </div>
+                                )}
                                 <div className="flex gap-2 sm:col-span-2">
                                     <button
                                         type="submit"

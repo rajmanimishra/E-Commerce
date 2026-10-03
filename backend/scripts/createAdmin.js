@@ -29,7 +29,12 @@ async function createAdmin() {
             role: "admin",
             isActive: true,
         },
-        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+        {
+            upsert: true,
+            returnDocument: "after",
+            runValidators: true,
+            setDefaultsOnInsert: true
+        }
     );
 
     console.log(`Admin account ready for ${email}.`);

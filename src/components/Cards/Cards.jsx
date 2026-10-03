@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Buttons from "../Buttons/Buttons";
+import { getProductImage } from "../../utils/productImage";
 
 // Product Images
 import Banana from "../../assets/banana.png";
@@ -108,7 +109,7 @@ const Cards = ({ category }) => {
                             <div className="h-52 flex items-center justify-center bg-white p-4">
 
                                 <img
-                                    src={imageMap[product.image]}
+                                    src={getProductImage(product.image, imageMap)}
                                     alt={product.title}
                                     loading="lazy"
                                     decoding="async"

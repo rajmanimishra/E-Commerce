@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getProductImage } from "../../utils/productImage";
 
 // Product Images
 import Banana from "../../assets/banana.png";
@@ -185,7 +186,7 @@ export default function Orders() {
                       loading="lazy"
                       decoding="async"
                       src={
-                        imageMap[item.productId?.image] ||
+                        getProductImage(item.productId?.image, imageMap) ||
                         "https://via.placeholder.com/80"
                       }
                       alt={item.title}

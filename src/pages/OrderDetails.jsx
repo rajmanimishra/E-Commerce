@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getProductImage } from "../utils/productImage";
 
 const API = "https://e-commerce-z6p4.onrender.com";
 
@@ -173,7 +174,7 @@ export default function OrderDetails() {
                                         loading="lazy"
                                         decoding="async"
                                         src={
-                                            item.productId?.image ||
+                                            getProductImage(item.productId?.image) ||
                                             "https://via.placeholder.com/80"
                                         }
                                         alt={item.title}

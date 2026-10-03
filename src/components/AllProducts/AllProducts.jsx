@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Buttons from "../Buttons/Buttons";
+import { getProductImage } from "../../utils/productImage";
 import { useLocation } from "react-router-dom";
 import { AiFillHeart } from "react-icons/ai";
 import { useWishlist } from "../CartContext/WishlistContext";
@@ -218,11 +219,7 @@ const AllProducts = () => {
                                     <div className="h-52 flex items-center justify-center bg-white p-4">
 
                                         <img
-                                            src={
-                                                imageMap[
-                                                product.image
-                                                ]
-                                            }
+                                            src={getProductImage(product.image, imageMap)}
                                             alt={product.title}
                                             loading="lazy"
                                             decoding="async"

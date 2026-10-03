@@ -1,6 +1,7 @@
 import React from "react";
 import { useWishlist } from "../CartContext/WishlistContext";
 import { useCart } from "../CartContext/CartContext";
+import { getProductImage } from "../../utils/productImage";
 
 // Product Images
 import Banana from "../../assets/banana.png";
@@ -212,7 +213,7 @@ const Wishlist = () => {
                                         <img
                                             loading="lazy"
                                             decoding="async"
-                                            src={imageMap[product.image]}
+                                            src={getProductImage(product.image, imageMap)}
                                             alt={product.title}
                                             className="w-full h-full object-contain"
                                         />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getProductImage } from "../../utils/productImage";
 
 // Product Images
 import Banana from "../../assets/banana.png";
@@ -440,11 +441,7 @@ const Cart = () => {
                                                 <img
                                                     loading="lazy"
                                                     decoding="async"
-                                                    src={
-                                                        imageMap[
-                                                        product.image
-                                                        ]
-                                                    }
+                                                    src={getProductImage(product.image, imageMap)}
                                                     alt={
                                                         product.title
                                                     }

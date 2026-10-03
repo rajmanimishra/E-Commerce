@@ -4,7 +4,7 @@ Grocify is a React storefront backed by an Express API and MongoDB. Customers ca
 
 ## Set up an admin account
 
-Configure `MONGO_URI`, `JWT_SECRET`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `backend/.env`. Use a unique JWT secret and an admin password with at least 12 characters. Keep this file out of source control.
+Configure `MONGO_URI`, `JWT_SECRET`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `backend/.env`. Use a unique JWT secret and an admin password with at least 12 characters. Keep this file out of source control. The backend uses Cloudflare and Google DNS for MongoDB SRV lookups by default; if your network requires different resolvers, set `MONGODB_DNS_SERVERS` to a comma-separated list of DNS server IPs.
 
 From the `backend` directory, run:
 
@@ -19,6 +19,10 @@ For a deployed admin account, set the admin values on the backend host and run t
 Admin sessions expire after one day. Product changes, order management, and customer account updates are checked by the API as well as the admin page.
 
 If your API runs at a different address, set `VITE_API_URL` for the frontend build to that API's base URL.
+
+## Upload product images
+
+In the admin dashboard, choose **Products → Add product**, select a JPG, PNG, or WebP image (up to 5 MB), and save the product. The image is stored in MongoDB GridFS and shown in the storefront, cart, wishlist, and order views. Existing image URLs and bundled filenames can still be used.
 
 ## Customer password reset
 

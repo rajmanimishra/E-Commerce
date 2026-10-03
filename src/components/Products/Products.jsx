@@ -4,6 +4,7 @@ import Buttons from "../Buttons/Buttons";
 import { Link } from "react-router-dom";
 import { AiFillHeart } from "react-icons/ai";
 import { useWishlist } from "../CartContext/WishlistContext";
+import { getProductImage } from "../../utils/productImage";
 
 // Product Images
 import Banana from "../../assets/banana.png";
@@ -243,11 +244,7 @@ const Products = () => {
                                     <div className="flex justify-center">
 
                                         <img
-                                            src={
-                                                imageMap[
-                                                card.image
-                                                ]
-                                            }
+                                            src={getProductImage(card.image, imageMap)}
                                             alt={card.title}
                                             loading="lazy"
                                             decoding="async"

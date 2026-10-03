@@ -7,6 +7,16 @@ const API = import.meta.env.VITE_API_URL || (
         : "https://e-commerce-z6p4.onrender.com"
 );
 
+async function readResponse(response) {
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error(
+            `The API at ${API} returned a non-JSON response (HTTP ${response.status}). Check that the backend is running and the API URL is correct.`
+        );
+    }
+
+    return response.json();
+}
+
 export default function AdminLogin() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -25,7 +35,7 @@ export default function AdminLogin() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
-            const data = await response.json();
+            const data = await readResponse(response);
 
             if (!response.ok) {
                 throw new Error(data.message || "Unable to sign in.");
@@ -35,7 +45,11 @@ export default function AdminLogin() {
             localStorage.setItem("user", JSON.stringify(data.user));
             navigate("/admin");
         } catch (requestError) {
-            setError(requestError.message || "Unable to reach the store. Try again.");
+            setError(
+                requestError instanceof TypeError
+                    ? `Can't reach the backend at ${API}. Start the backend and try again.`
+                    : requestError.message || "Unable to reach the store. Try again."
+            );
         } finally {
             setSubmitting(false);
         }
