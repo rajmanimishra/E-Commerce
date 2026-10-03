@@ -49,6 +49,8 @@ function AboutUs() {
         <img
           src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=700&q=80"
           alt="Fresh vegetables"
+          loading="lazy"
+          decoding="async"
           className="w-full lg:w-1/2 rounded-2xl"
         />
 

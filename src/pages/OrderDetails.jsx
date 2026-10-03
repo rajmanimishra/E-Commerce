@@ -170,6 +170,8 @@ export default function OrderDetails() {
                                     className="flex items-center gap-4 border rounded-xl p-3"
                                 >
                                     <img
+                                        loading="lazy"
+                                        decoding="async"
                                         src={
                                             item.productId?.image ||
                                             "https://via.placeholder.com/80"

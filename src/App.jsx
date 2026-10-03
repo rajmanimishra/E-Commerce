@@ -34,6 +34,11 @@ import { CartProvider } from "./components/CartContext/CartContext";
 import { WishlistProvider } from "./components/CartContext/WishlistContext";
 import Orders from "./components/Orders/Orders";
 import OrderDetails from "./pages/OrderDetails";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminRoute from "./components/ProtectedRoute/AdminRoute";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
 
@@ -147,6 +152,30 @@ function App() {
     {
       path: "/register",
       element: <Register />,
+    },
+
+    {
+      path: "/admin/login",
+      element: <AdminLogin />,
+    },
+
+    {
+      path: "/forgot-password",
+      element: <ForgotPassword />,
+    },
+
+    {
+      path: "/reset-password",
+      element: <ResetPassword />,
+    },
+
+    {
+      path: "/admin",
+      element: (
+        <AdminRoute>
+          <AdminDashboard />
+        </AdminRoute>
+      ),
     },
 
 

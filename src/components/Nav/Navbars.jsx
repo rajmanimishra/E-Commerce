@@ -6,10 +6,19 @@ import { HiMenu, HiX } from "react-icons/hi";
 import { FiPackage } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 
+function hasAdminRole() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}").role === "admin";
+  } catch {
+    return false;
+  }
+}
+
 function Navbars() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [orderCount, setOrderCount] = useState(0);
+  const isAdmin = hasAdminRole();
 
   const navigate = useNavigate();
 
@@ -64,6 +73,7 @@ function Navbars() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/login");
     setMenuOpen(false);
   };
@@ -200,6 +210,15 @@ function Navbars() {
 
           {/* LOGOUT */}
 
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="px-4 py-2 rounded-full border border-orange-500 text-orange-600 font-semibold hover:bg-orange-50"
+            >
+              Admin
+            </Link>
+          )}
+
           <button
             onClick={handleLogout}
             className="px-4 py-2 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600"
@@ -260,6 +279,16 @@ function Navbars() {
             <Link to="/contact" onClick={() => setMenuOpen(false)}>
               Contact Us
             </Link>
+
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setMenuOpen(false)}
+                className="font-semibold text-orange-600"
+              >
+                Admin dashboard
+              </Link>
+            )}
 
             {/* ORDERS */}
 

@@ -2,7 +2,7 @@ import React from 'react'
 import Heading from '../Heading/Heading'
 // import { FaHeart } from "react-icons/fa";
 import { FaHeart, FaLeaf } from "react-icons/fa";
-import FruitsVeggCat from '../../assets/grocery.png'
+import FruitsVeggCat from '../../assets/grocery.webp'
 import { FaShieldAlt, FaSeedling } from "react-icons/fa";
 
 
@@ -67,7 +67,9 @@ const Values = () => {
                         <div className="flex justify-center items-center">
                             <img
                                 src={FruitsVeggCat}// apni image ka path
-
+                                alt="Fresh groceries"
+                                loading="lazy"
+                                decoding="async"
                                 className="w-80 lg:w-[400px] md:w-60 h-60 object-contain"
                             />
                         </div>

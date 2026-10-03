@@ -182,6 +182,8 @@ export default function Orders() {
                     className="flex items-center gap-4"
                   >
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={
                         imageMap[item.productId?.image] ||
                         "https://via.placeholder.com/80"

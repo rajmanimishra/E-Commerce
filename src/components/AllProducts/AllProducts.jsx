@@ -224,6 +224,8 @@ const AllProducts = () => {
                                                 ]
                                             }
                                             alt={product.title}
+                                            loading="lazy"
+                                            decoding="async"
                                             className="w-full h-full object-contain"
                                         />
 

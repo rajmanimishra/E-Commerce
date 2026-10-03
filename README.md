@@ -1,16 +1,23 @@
-# React + Vite
+# Grocify
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Grocify is a React storefront backed by an Express API and MongoDB. Customers can browse products, place orders, and manage their accounts. Store staff use the admin area to manage the catalog, orders, and customer access.
 
-Currently, two official plugins are available:
+## Set up an admin account
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Configure `MONGO_URI`, `JWT_SECRET`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `backend/.env`. Use a unique JWT secret and an admin password with at least 12 characters. Keep this file out of source control.
 
-## React Compiler
+From the `backend` directory, run:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```sh
+npm run create-admin
+```
 
-## Expanding the ESLint configuration
+This creates or updates the admin account in MongoDB; there is no public admin registration route. Start the backend and frontend as usual, then open `/admin/login`. Add the same admin settings to your backend host's environment before running the setup command there.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Admin sessions expire after one day. Product changes, order management, and customer account updates are checked by the API as well as the admin page.
+
+If your API runs at a different address, set `VITE_API_URL` for the frontend build to that API's base URL.
+
+## Customer password reset
+
+Forgot-password emails use SMTP. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, and `FRONTEND_URL` in the backend environment. Use an app password or SMTP credential from your email provider; don't commit these values. `FRONTEND_URL` should be the deployed storefront origin. Reset links expire after 15 minutes and can only be used once. Requests are limited to one email per account each minute, and the response doesn't reveal whether an account exists.

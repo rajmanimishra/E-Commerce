@@ -1,5 +1,5 @@
 
-import Grocery from '../../assets/grocery.png';
+import Grocery from '../../assets/grocery.webp';
 import { Link } from "react-router-dom";
 
 const Hero = () => {
@@ -35,6 +35,8 @@ const Hero = () => {
                     <img
                         src={Grocery}
                         alt="Hero image"
+                        fetchPriority="high"
+                        decoding="async"
                         className="w-full max-w-75 md:max-w-137.5"
                     />
                 </div>

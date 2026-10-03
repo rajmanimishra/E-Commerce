@@ -210,6 +210,8 @@ const Wishlist = () => {
                                     <div className="h-52 flex items-center justify-center bg-white p-5">
 
                                         <img
+                                            loading="lazy"
+                                            decoding="async"
                                             src={imageMap[product.image]}
                                             alt={product.title}
                                             className="w-full h-full object-contain"

@@ -2,9 +2,9 @@ import React from "react";
 import { FaStar } from "react-icons/fa";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 
-import User1 from "../../assets/customer1.jpg";
-import User2 from "../../assets/customer2.jpg";
-import User3 from "../../assets/customer3.jpg";
+import User1 from "../../assets/customer1.webp";
+import User2 from "../../assets/customer2.webp";
+import User3 from "../../assets/customer3.webp";
 
 const testimonials = [
     {
@@ -87,6 +87,8 @@ const Testimonials = () => {
                                 <img
                                     src={item.image}
                                     alt=""
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-16 h-16 rounded-full border-2 border-orange-500 object-cover" />
 
                                 <div>

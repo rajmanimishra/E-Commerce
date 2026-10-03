@@ -249,6 +249,8 @@ const Products = () => {
                                                 ]
                                             }
                                             alt={card.title}
+                                            loading="lazy"
+                                            decoding="async"
                                             className="w-40 h-40 object-contain"
                                         />
 

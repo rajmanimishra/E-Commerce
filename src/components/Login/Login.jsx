@@ -32,9 +32,9 @@ const Login = () => {
 
                 // Save JWT token
                 localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
 
-                // Go to Home page
-                navigate("/");
+                navigate(data.user.role === "admin" ? "/admin" : "/");
 
             } else {
                 alert(data.message);
@@ -126,6 +126,16 @@ const Login = () => {
 
                         </div>
 
+                        <div className="text-right -mt-2">
+                            <button
+                                type="button"
+                                onClick={() => navigate("/forgot-password")}
+                                className="text-sm font-semibold text-orange-600 hover:underline"
+                            >
+                                Forgot password?
+                            </button>
+                        </div>
+
 
                         {/* Login Button */}
 
@@ -155,6 +165,17 @@ const Login = () => {
                     </p>
 
                 </div>
+
+                <p className="text-center text-sm text-gray-500 mt-5">
+                    Run the store?{" "}
+                    <button
+                        type="button"
+                        onClick={() => navigate("/admin/login")}
+                        className="font-semibold text-orange-600 hover:underline"
+                    >
+                        Admin sign in
+                    </button>
+                </p>
 
 
                 {/* Bottom Text */}

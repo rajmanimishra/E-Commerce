@@ -138,6 +138,8 @@ function Processes() {
                         <img
                             src="https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=700&q=80"
                             alt="Delivery"
+                            loading="lazy"
+                            decoding="async"
                             className="rounded-2xl w-full"
                         />
                     </div>

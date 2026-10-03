@@ -1,8 +1,8 @@
 import React from 'react'
 import Heading from '../Heading/Heading';
-import FruitsVeggCat from '../../assets/fruits-and-veggies.png'
-import DairyEggsCat from '../../assets/dairy-and-eggs.png'
-import MeatSeaFoodCat from '../../assets/meat-and-seafood.png'
+import FruitsVeggCat from '../../assets/fruits-and-veggies.webp'
+import DairyEggsCat from '../../assets/dairy-and-eggs.webp'
+import MeatSeaFoodCat from '../../assets/meat-and-seafood.webp'
 import { Link } from 'react-router-dom'
 
 const Category = () => {
@@ -10,7 +10,13 @@ const Category = () => {
         return (
             <div key={cards.id} className='flex-1 '>
                 <div className="h-64 overflow-hidden">
-                    <img src={cards.image} className="w-full h-full object-cover" />
+                    <img
+                        src={cards.image}
+                        alt={cards.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                    />
                 </div>
 
                 <div className='bg-zinc-100 p-6.25'>

@@ -438,6 +438,8 @@ const Cart = () => {
                                             <div className="w-32 h-32 flex items-center justify-center">
 
                                                 <img
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     src={
                                                         imageMap[
                                                         product.image

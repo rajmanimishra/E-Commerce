@@ -5,6 +5,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
 const authMiddleware = require("../middleware/authmiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
 const Order = require("../schema/orderSchema");
 const CartItem = require("../schema/cartSchema");
@@ -256,6 +257,73 @@ router.post("/verify-payment", authMiddleware, async (req, res) => {
 // GET MY ORDERS
 // GET /api/orders
 // ======================================
+
+router.get("/admin/all", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("userId", "name email")
+      .populate("items.productId", "title price image")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error("Get All Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to load store orders.",
+    });
+  }
+});
+
+router.patch("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const allowedStatuses = [
+      "Placed",
+      "Confirmed",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
+    const { orderStatus } = req.body;
+
+    if (!allowedStatuses.includes(orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Choose a valid order status.",
+      });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { orderStatus },
+      { new: true, runValidators: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Order status updated.",
+      order,
+    });
+  } catch (error) {
+    console.error("Update Order Status Error:", error);
+    res.status(error.name === "CastError" ? 400 : 500).json({
+      success: false,
+      message: error.name === "CastError" ? "Invalid order." : "Unable to update order status.",
+    });
+  }
+});
 
 router.get("/", authMiddleware, async (req, res) => {
   try {
