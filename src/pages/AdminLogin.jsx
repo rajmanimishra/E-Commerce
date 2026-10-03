@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL || "https://e-commerce-z6p4.onrender.com";
+const API = import.meta.env.VITE_API_URL || (
+    import.meta.env.DEV
+        ? "http://localhost:3000"
+        : "https://e-commerce-z6p4.onrender.com"
+);
 
 export default function AdminLogin() {
     const [email, setEmail] = useState("");

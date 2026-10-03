@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL || "https://e-commerce-z6p4.onrender.com";
+const API = import.meta.env.VITE_API_URL || (
+    import.meta.env.DEV
+        ? "http://localhost:3000"
+        : "https://e-commerce-z6p4.onrender.com"
+);
 const tabs = ["Products", "Orders", "Customers"];
 const orderStatuses = [
     "Placed",
