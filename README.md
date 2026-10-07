@@ -16,7 +16,7 @@ This creates or updates the admin account in MongoDB; there is no public admin r
 
 For a deployed admin account, set the admin values on the backend host and run the setup command against that host's MongoDB. A locally-created account does not automatically exist in the production database.
 
-Admin sessions expire after one day. Product changes, order management, and customer account updates are checked by the API as well as the admin page.
+Admin sessions expire after one day. Product changes, order management, and customer account updates are checked by the API as well as the admin page. In **Admin → Customers**, admins can suspend or restore accounts, set a new customer password, or email the customer a password-reset link. Reset emails require the SMTP and `FRONTEND_URL` settings described below.
 
 If your API runs at a different address, set `VITE_API_URL` for the frontend build to that API's base URL.
 

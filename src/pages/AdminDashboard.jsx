@@ -62,6 +62,10 @@ export default function AdminDashboard() {
     const [showProductForm, setShowProductForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [refresh, setRefresh] = useState(0);
+    const [editingCustomerPasswordId, setEditingCustomerPasswordId] = useState("");
+    const [customerPassword, setCustomerPassword] = useState("");
+    const [customerPasswordConfirmation, setCustomerPasswordConfirmation] = useState("");
+    const [passwordActionCustomerId, setPasswordActionCustomerId] = useState("");
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -228,6 +232,55 @@ export default function AdminDashboard() {
             setNotice(data.message);
         } catch (requestError) {
             setError(requestError.message || "Unable to update this account.");
+        }
+    }
+
+    async function updateCustomerPassword(event, customer) {
+        event.preventDefault();
+        setError("");
+        setNotice("");
+
+        if (customerPassword !== customerPasswordConfirmation) {
+            setError("The passwords do not match.");
+            return;
+        }
+
+        setPasswordActionCustomerId(customer.id);
+        try {
+            const data = await request(
+                `/api/auth/admin/customers/${customer.id}/password`,
+                {
+                    method: "PATCH",
+                    body: JSON.stringify({ password: customerPassword }),
+                }
+            );
+            setNotice(data.message);
+            setEditingCustomerPasswordId("");
+            setCustomerPassword("");
+            setCustomerPasswordConfirmation("");
+        } catch (requestError) {
+            setError(requestError.message || "Unable to update this customer password.");
+        } finally {
+            setPasswordActionCustomerId("");
+        }
+    }
+
+    async function sendCustomerPasswordReset(customer) {
+        if (!window.confirm(`Send a password reset email to ${customer.email}?`)) return;
+
+        setError("");
+        setNotice("");
+        setPasswordActionCustomerId(customer.id);
+        try {
+            const data = await request(
+                `/api/auth/admin/customers/${customer.id}/password-reset`,
+                { method: "POST" }
+            );
+            setNotice(data.message);
+        } catch (requestError) {
+            setError(requestError.message || "Unable to send a password reset email.");
+        } finally {
+            setPasswordActionCustomerId("");
         }
     }
 
@@ -493,7 +546,7 @@ export default function AdminDashboard() {
                     <section className="rounded-xl border border-stone-200 bg-white">
                         <div className="border-b border-stone-200 px-5 py-4">
                             <h2 className="text-lg font-bold">Customer accounts</h2>
-                            <p className="text-sm text-stone-500">Suspend an account to stop sign-in, or restore access later.</p>
+                            <p className="text-sm text-stone-500">Manage account access, set a new password, or email a reset link.</p>
                         </div>
                         {loading ? (
                             <p className="p-6 text-sm text-stone-500">Loading customer accounts...</p>
@@ -507,10 +560,33 @@ export default function AdminDashboard() {
                                             <p className="font-semibold">{customer.name}</p>
                                             <p className="mt-1 text-sm text-stone-500">{customer.email}</p>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex flex-wrap items-center gap-3">
                                             <span className={`text-sm font-medium ${customer.isActive ? "text-green-700" : "text-red-700"}`}>
                                                 {customer.isActive ? "Active" : "Suspended"}
                                             </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditingCustomerPasswordId(
+                                                        editingCustomerPasswordId === customer.id ? "" : customer.id
+                                                    );
+                                                    setCustomerPassword("");
+                                                    setCustomerPasswordConfirmation("");
+                                                    setError("");
+                                                    setNotice("");
+                                                }}
+                                                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium hover:bg-stone-50"
+                                            >
+                                                Change password
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => sendCustomerPasswordReset(customer)}
+                                                disabled={passwordActionCustomerId === customer.id}
+                                                className="rounded-lg border border-orange-200 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:cursor-wait disabled:opacity-60"
+                                            >
+                                                Email reset link
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => updateCustomerStatus(customer)}
@@ -523,6 +599,55 @@ export default function AdminDashboard() {
                                                 {customer.isActive ? "Suspend" : "Restore access"}
                                             </button>
                                         </div>
+                                        {editingCustomerPasswordId === customer.id && (
+                                            <form
+                                                onSubmit={(event) => updateCustomerPassword(event, customer)}
+                                                className="grid w-full gap-3 rounded-lg bg-stone-50 p-4 sm:grid-cols-[1fr_1fr_auto_auto]"
+                                            >
+                                                <label className="text-sm font-medium text-stone-700">
+                                                    New password
+                                                    <input
+                                                        type="password"
+                                                        autoComplete="new-password"
+                                                        minLength={8}
+                                                        required
+                                                        value={customerPassword}
+                                                        onChange={(event) => setCustomerPassword(event.target.value)}
+                                                        className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+                                                    />
+                                                </label>
+                                                <label className="text-sm font-medium text-stone-700">
+                                                    Confirm password
+                                                    <input
+                                                        type="password"
+                                                        autoComplete="new-password"
+                                                        minLength={8}
+                                                        required
+                                                        value={customerPasswordConfirmation}
+                                                        onChange={(event) => setCustomerPasswordConfirmation(event.target.value)}
+                                                        className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+                                                    />
+                                                </label>
+                                                <button
+                                                    type="submit"
+                                                    disabled={passwordActionCustomerId === customer.id}
+                                                    className="self-end rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60"
+                                                >
+                                                    {passwordActionCustomerId === customer.id ? "Saving..." : "Save password"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingCustomerPasswordId("");
+                                                        setCustomerPassword("");
+                                                        setCustomerPasswordConfirmation("");
+                                                    }}
+                                                    className="self-end rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-white"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
                                 ))}
                             </div>

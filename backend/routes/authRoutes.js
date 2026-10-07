@@ -532,6 +532,134 @@ router.patch("/admin/customers/:id/status", authMiddleware, adminMiddleware, asy
     }
 });
 
+router.patch("/admin/customers/:id/password", authMiddleware, adminMiddleware, async (req, res) => {
+    const { password } = req.body;
+    if (typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: "Choose a password with at least 8 characters."
+        });
+    }
+
+    try {
+        const customer = await User.findOne({
+            _id: req.params.id,
+            $or: [
+                { role: "customer" },
+                { role: { $exists: false } }
+            ]
+        });
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer account not found."
+            });
+        }
+
+        customer.password = await bcrypt.hash(password, 10);
+        customer.resetPasswordToken = undefined;
+        customer.resetPasswordExpires = undefined;
+        await customer.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Password updated for ${customer.email}.`
+        });
+    } catch (error) {
+        console.error("Update Customer Password Error:", error);
+        return res.status(error.name === "CastError" ? 400 : 500).json({
+            success: false,
+            message: error.name === "CastError"
+                ? "Invalid customer account."
+                : "Unable to update this customer password."
+        });
+    }
+});
+
+router.post("/admin/customers/:id/password-reset", authMiddleware, adminMiddleware, async (req, res) => {
+    const mailer = getPasswordResetMailer();
+    if (!mailer || !process.env.FRONTEND_URL) {
+        console.error("Password reset requires SMTP settings and FRONTEND_URL.");
+        return res.status(503).json({
+            success: false,
+            message: "Password reset email is not configured. Please contact the store."
+        });
+    }
+
+    let resetUrl;
+    try {
+        resetUrl = new URL(process.env.FRONTEND_URL);
+        if (!["http:", "https:"].includes(resetUrl.protocol)) {
+            throw new Error("FRONTEND_URL must use HTTP or HTTPS.");
+        }
+        resetUrl.pathname = `${resetUrl.pathname.replace(/\/+$/, "")}/reset-password`;
+        resetUrl.search = "";
+        resetUrl.hash = "";
+    } catch (error) {
+        console.error("Invalid FRONTEND_URL for password reset:", error.message);
+        return res.status(503).json({
+            success: false,
+            message: "Password reset email is not configured. Please contact the store."
+        });
+    }
+
+    try {
+        const customer = await User.findOne({
+            _id: req.params.id,
+            $or: [
+                { role: "customer" },
+                { role: { $exists: false } }
+            ]
+        });
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer account not found."
+            });
+        }
+
+        const resetToken = crypto.randomBytes(32).toString("base64url");
+        const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+        customer.resetPasswordToken = tokenHash;
+        customer.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+        await customer.save();
+
+        resetUrl.searchParams.set("token", resetToken);
+        const safeName = escapeHtml(customer.name);
+
+        try {
+            await mailer.sendMail({
+                from: process.env.MAIL_FROM,
+                to: customer.email,
+                subject: "Reset your Grocify password",
+                text: `Hi ${customer.name},\n\nA store administrator requested a password reset for your account. Use this link to choose a new password:\n${resetUrl.toString()}\n\nThis link expires in 15 minutes. If you did not expect this email, contact the store.`,
+                html: `<p>Hi ${safeName},</p><p>A store administrator requested a password reset for your account. Use the link below to choose a new password. It expires in 15 minutes.</p><p><a href="${resetUrl.toString()}">Reset your password</a></p><p>If you did not expect this email, contact the store.</p>`
+            });
+        } catch (error) {
+            await User.updateOne(
+                { _id: customer._id, resetPasswordToken: tokenHash },
+                { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } }
+            );
+            throw error;
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Password reset email sent to ${customer.email}.`
+        });
+    } catch (error) {
+        console.error("Send Customer Password Reset Error:", error);
+        return res.status(error.name === "CastError" ? 400 : 500).json({
+            success: false,
+            message: error.name === "CastError"
+                ? "Invalid customer account."
+                : "Unable to send a password reset email right now."
+        });
+    }
+});
+
 
 router.get("/profile", authMiddleware, async (req, res) => {
 
