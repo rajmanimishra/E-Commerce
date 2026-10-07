@@ -11,7 +11,6 @@ const router = express.Router();
 const passwordResetResponse = {
     message: "If an account exists for that email, a password reset link will be sent shortly."
 };
-
 function getPasswordResetMailer() {
     const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM } = process.env;
     const port = Number(SMTP_PORT || 587);
@@ -42,7 +41,42 @@ function escapeHtml(value) {
     })[character]);
 }
 
-// Register
+router.post("/profile/recovery-codes", authMiddleware, async (req, res) => {
+    if (req.user.role === "admin") {
+        return res.status(403).json({
+            message: "Recovery codes are only available for customer accounts."
+        });
+    }
+
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({
+                message: "Customer account not found."
+            });
+        }
+
+        const recoveryCodes = Array.from(
+            { length: 10 },
+            () => crypto.randomBytes(16).toString("hex").toUpperCase()
+        );
+        user.recoveryCodeHashes = recoveryCodes.map((code) =>
+            crypto.createHash("sha256").update(code).digest("hex")
+        );
+        await user.save();
+
+        return res.status(200).json({
+            message: "Save these codes somewhere safe. They will only be shown once.",
+            recoveryCodes
+        });
+    } catch (error) {
+        console.error("Recovery code generation failed:", error);
+        return res.status(500).json({
+            message: "Unable to generate recovery codes right now."
+        });
+    }
+});
+
 router.post("/register", async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -89,9 +123,15 @@ router.post("/register", async (req, res) => {
         });
 
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({
+                message: "User already exists"
+            });
+        }
+
+        console.error("Registration Error:", error);
         res.status(500).json({
-            message: "Server error",
-            error: error.message
+            message: "Unable to create the account right now."
         });
     }
 });
@@ -310,6 +350,56 @@ router.post("/forgot-password", async (req, res) => {
         console.error("Forgot Password Error:", error);
         return res.status(500).json({
             message: "Unable to send a password reset email right now. Please try again later."
+        });
+    }
+});
+
+router.post("/forgot-password/recovery-code", async (req, res) => {
+    const { email, code } = req.body;
+    if (
+        typeof email !== "string" || !email.trim() ||
+        typeof code !== "string" || !/^[A-Fa-f0-9]{32}$/.test(code.trim())
+    ) {
+        return res.status(400).json({
+            message: "Enter your account email and a valid recovery code."
+        });
+    }
+
+    try {
+        const token = crypto.randomBytes(32).toString("base64url");
+        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+        const codeHash = crypto.createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+        const user = await User.findOneAndUpdate(
+            {
+                email: email.trim().toLowerCase(),
+                role: { $ne: "admin" },
+                isActive: { $ne: false },
+                recoveryCodeHashes: codeHash
+            },
+            {
+                $pull: { recoveryCodeHashes: codeHash },
+                $set: {
+                    resetPasswordToken: tokenHash,
+                    resetPasswordExpires: new Date(Date.now() + 15 * 60 * 1000)
+                }
+            },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(400).json({
+                message: "The recovery code is invalid or already used. Try another saved code."
+            });
+        }
+
+        return res.status(200).json({
+            message: "Recovery code accepted. Choose a new password.",
+            token
+        });
+    } catch (error) {
+        console.error("Recovery code password reset failed:", error);
+        return res.status(500).json({
+            message: "Unable to verify this recovery code right now."
         });
     }
 });

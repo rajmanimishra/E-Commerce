@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AiFillHeart } from "react-icons/ai";
 import { RiShoppingBag4Fill } from "react-icons/ri";
 import { IoSearch } from "react-icons/io5";
 import { HiMenu, HiX } from "react-icons/hi";
-import { FiPackage } from "react-icons/fi";
+import { FiPackage, FiUser } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 
 function hasAdminRole() {
@@ -22,18 +22,10 @@ function Navbars() {
 
   const navigate = useNavigate();
 
-  // =========================
-  // FETCH ORDER COUNT
-  // =========================
-
-  useEffect(() => {
-    fetchOrdersCount();
-  }, []);
-
   const fetchOrdersCount = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return;
+      if (!token) return null;
 
       const res = await fetch(
         "https://e-commerce-z6p4.onrender.com/api/orders",
@@ -45,14 +37,29 @@ function Navbars() {
       );
 
       const data = await res.json();
-
-      if (data.success) {
-        setOrderCount(data.count || 0);
-      }
+      return data.success ? data.count || 0 : null;
     } catch (error) {
       console.log(error);
+      return null;
     }
   };
+
+  // =========================
+  // FETCH ORDER COUNT
+  // =========================
+
+  useEffect(() => {
+    let active = true;
+    fetchOrdersCount().then((count) => {
+      if (active && count !== null) {
+        setOrderCount(count);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // =========================
   // SEARCH
@@ -102,6 +109,11 @@ function Navbars() {
 
   const handleOrders = () => {
     navigate("/orders");
+    setMenuOpen(false);
+  };
+
+  const handleProfile = () => {
+    navigate("/profile");
     setMenuOpen(false);
   };
 
@@ -199,6 +211,15 @@ function Navbars() {
             )}
           </button>
 
+          <button
+            onClick={handleProfile}
+            aria-label="Profile and phone verification"
+            title="Profile"
+            className="text-2xl hover:text-orange-500 cursor-pointer"
+          >
+            <FiUser />
+          </button>
+
           {/* CART */}
 
           <button
@@ -289,6 +310,14 @@ function Navbars() {
                 Admin dashboard
               </Link>
             )}
+
+            <button
+              onClick={handleProfile}
+              className="flex items-center gap-3 w-full"
+            >
+              <FiUser className="text-xl" />
+              <span>Profile</span>
+            </button>
 
             {/* ORDERS */}
 

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_URL || "https://e-commerce-z6p4.onrender.com";
+import { requestJson } from "../utils/api";
 
 export default function ResetPassword() {
     const [searchParams] = useSearchParams();
@@ -23,20 +22,19 @@ export default function ResetPassword() {
 
         setSubmitting(true);
         try {
-            const response = await fetch(`${API}/api/auth/reset-password`, {
+            await requestJson("/api/auth/reset-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token, password }),
             });
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Unable to reset your password.");
-            }
 
             setSuccess(true);
         } catch (requestError) {
-            setError(requestError.message || "Unable to reach the store. Try again.");
+            setError(
+                requestError instanceof TypeError
+                    ? "Can't reach the store right now. Check your connection and try again."
+                    : requestError.message || "Unable to reset your password."
+            );
         } finally {
             setSubmitting(false);
         }

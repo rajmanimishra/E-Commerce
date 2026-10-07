@@ -12,6 +12,12 @@ const userSchema= new mongoose.Schema(   {
             unique: true
         },
 
+        recoveryCodeHashes: {
+            type: [String],
+            select: false,
+            default: []
+        },
+
         password: {
             type: String,
             required: true

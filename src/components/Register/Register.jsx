@@ -1,53 +1,31 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { requestJson } from "../../utils/api";
 
 const Register = () => {
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
 
     const navigate = useNavigate();
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setError("");
 
         try {
-
-            const response = await fetch(
-                "https://e-commerce-z6p4.onrender.com/api/auth/register",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        password
-                    })
-                }
-            );
-
-            const data = await response.json();
-
-            if (response.ok) {
-
-                alert("Registration successful");
-
-                navigate("/login");
-
-            } else {
-
-                alert(data.message);
-
-            }
+            await requestJson("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password })
+            });
+            alert("Registration successful");
+            navigate("/login");
 
         } catch (error) {
-
-            console.log(error);
-            alert("Something went wrong");
-
+            setError(error.message || "Unable to create the account right now.");
         }
     };
 
@@ -148,6 +126,12 @@ const Register = () => {
                             />
 
                         </div>
+
+                        {error && (
+                            <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                                {error}
+                            </p>
+                        )}
 
 
                         {/* Register Button */}

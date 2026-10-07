@@ -4,11 +4,13 @@ const dns = require("dns");
 
 async function connectDB() {
     try {
-        const dnsServers = process.env.MONGODB_DNS_SERVERS
-            ? process.env.MONGODB_DNS_SERVERS.split(",").map((server) => server.trim()).filter(Boolean)
-            : ["1.1.1.1", "8.8.8.8"];
-
-        dns.setServers(dnsServers);
+        const configuredDnsServers = process.env.MONGODB_DNS_SERVERS
+            ?.split(",")
+            .map((server) => server.trim())
+            .filter(Boolean);
+        if (configuredDnsServers?.length) {
+            dns.setServers(configuredDnsServers);
+        }
 
         console.log("Connecting to MongoDB...");
         console.log("MONGO_URI exists:", !!process.env.MONGO_URI);

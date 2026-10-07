@@ -4,7 +4,7 @@ Grocify is a React storefront backed by an Express API and MongoDB. Customers ca
 
 ## Set up an admin account
 
-Configure `MONGO_URI`, `JWT_SECRET`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `backend/.env`. Use a unique JWT secret and an admin password with at least 12 characters. Keep this file out of source control. The backend uses Cloudflare and Google DNS for MongoDB SRV lookups by default; if your network requires different resolvers, set `MONGODB_DNS_SERVERS` to a comma-separated list of DNS server IPs.
+Configure `MONGO_URI`, `JWT_SECRET`, `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `backend/.env`. Use a unique JWT secret and an admin password with at least 12 characters. Keep this file out of source control. The backend uses the operating system's DNS settings by default for MongoDB SRV lookups. If your network requires specific resolvers, optionally set `MONGODB_DNS_SERVERS` to a comma-separated list of DNS server IPs.
 
 From the `backend` directory, run:
 
@@ -27,3 +27,5 @@ In the admin dashboard, choose **Products → Add product**, select a JPG, PNG, 
 ## Customer password reset
 
 Forgot-password emails use SMTP. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, and `FRONTEND_URL` in the backend environment. Use an app password or SMTP credential from your email provider; don't commit these values. `FRONTEND_URL` should be the deployed storefront origin. Reset links expire after 15 minutes and can only be used once. Requests are limited to one email per account each minute, and the response doesn't reveal whether an account exists.
+
+Customers can generate ten one-time password recovery codes from **Profile → Password recovery codes** without configuring an email service. Save these codes securely; they are displayed only once, stored as hashes, and each code is consumed after use. Generating a new set invalidates all remaining codes from the previous set. On the forgot-password page, choose **Recovery code**, enter the account email and one saved code, then choose a new password within 15 minutes. A recovery code must be generated in advance while signed in.
