@@ -1,6 +1,10 @@
 
 const express = require("express");
 const cors = require("cors");
+const dns = require("node:dns");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 require("dotenv").config();
 
 const connectDB = require("./db/db");
@@ -15,17 +19,11 @@ const aiRoutes = require("./routes/aiRoutes");
 
 const app = express();
 
-// ===============================
 // Middleware
-// ===============================
-
 app.use(cors());
 app.use(express.json());
 
-// ===============================
 // API Routes
-// ===============================
-
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
@@ -33,30 +31,21 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/ai", aiRoutes);
 
-// ===============================
 // Home Route
-// ===============================
-
 app.get("/", (req, res) => {
-    res.json({ success: true, message: "Backend is running" });
+    res.json({
+        success: true,
+        message: "Backend is running"
+    });
 });
 
-// ===============================
 // Connect MongoDB
-// ===============================
-
 connectDB();
 
-// ===============================
 // Port
-// ===============================
-
 const PORT = process.env.PORT || 3000;
 
-// ===============================
 // Start Server
-// ===============================
-
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
 });
