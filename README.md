@@ -18,7 +18,7 @@ For a deployed admin account, set the admin values on the backend host and run t
 
 Admin sessions expire after one day. Product changes, order management, and customer account updates are checked by the API as well as the admin page. In **Admin → Customers**, admins can suspend or restore accounts, set a new customer password, or email the customer a password-reset link. Reset emails require the SMTP and `FRONTEND_URL` settings described below.
 
-If your API runs at a different address, set `VITE_API_URL` for the frontend build to that API's base URL.
+If your API runs at a different address, set `VITE_API_URL` for the frontend build to the backend's base URL (for example, `https://your-api.example.com`). A trailing `/api` is also accepted. Rebuild and redeploy the frontend after changing this setting.
 
 ## Upload product images
 
