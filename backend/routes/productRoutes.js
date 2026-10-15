@@ -290,7 +290,7 @@ router.get("/images/:id", async (req, res) => {
 // GET - Get all products
 router.get("/", async (req, res) => {
     try {
-        const products = await Product.find();
+        const products = await Product.find().lean();
 
         res.status(200).json({
             success: true,
