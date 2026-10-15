@@ -1,44 +1,46 @@
-import React from "react";
-import Home from "./components/Home/Home";
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-import Fruits from "./components/Fruits/Fruits";
-import Dairy from "./components/Dairy/Dairy";
-import SeaFood from "./components/SeaFood/SeaFood";
-import AllProducts from "./components/AllProducts/AllProducts";
-
 import Layout from "./components/Layout/Layout";
-import AboutUs from "./components/AboutUs/AboutUs";
-import Processes from "./components/Processes/Processes";
-import ContactUs from "./components/ContactUs/ContactUs";
-
-import Login from "./components/Login/Login";
-import Register from "./components/Register/Register";
-import Profile from "./components/Profile/Profile";
-
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
-
-// Cart
-import Cart from "./components/Cart/Cart";
-
-// Wishlist
-import Wishlist from "./components/Wishlist/Wishlist";
-
-// Checkout
-import Checkout from "./components/Checkout/Checkout";
-
-// Cart Context
 import { CartProvider } from "./components/CartContext/CartContext";
-
-// Wishlist Context
 import { WishlistProvider } from "./components/CartContext/WishlistContext";
-import Orders from "./components/Orders/Orders";
-import OrderDetails from "./pages/OrderDetails";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
 import AdminRoute from "./components/ProtectedRoute/AdminRoute";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+
+const Home = lazy(() => import("./components/Home/Home"));
+const Fruits = lazy(() => import("./components/Fruits/Fruits"));
+const Dairy = lazy(() => import("./components/Dairy/Dairy"));
+const SeaFood = lazy(() => import("./components/SeaFood/SeaFood"));
+const AllProducts = lazy(() => import("./components/AllProducts/AllProducts"));
+const AboutUs = lazy(() => import("./components/AboutUs/AboutUs"));
+const Processes = lazy(() => import("./components/Processes/Processes"));
+const ContactUs = lazy(() => import("./components/ContactUs/ContactUs"));
+const Cart = lazy(() => import("./components/Cart/Cart"));
+const Wishlist = lazy(() => import("./components/Wishlist/Wishlist"));
+const Checkout = lazy(() => import("./components/Checkout/Checkout"));
+const Orders = lazy(() => import("./components/Orders/Orders"));
+const OrderDetails = lazy(() => import("./pages/OrderDetails"));
+const Login = lazy(() => import("./components/Login/Login"));
+const Register = lazy(() => import("./components/Register/Register"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Profile = lazy(() => import("./components/Profile/Profile"));
+
+function lazyPage(Component) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center text-gray-500" role="status">
+          Loading page...
+        </div>
+      }
+    >
+      <Component />
+    </Suspense>
+  );
+}
 
 function App() {
 
@@ -62,78 +64,78 @@ function App() {
         // HOME
         {
           index: true,
-          element: <Home />,
+          element: lazyPage(Home),
         },
 
         // FRUITS
         {
           path: "fruits",
-          element: <Fruits />,
+          element: lazyPage(Fruits),
         },
 
         // DAIRY
         {
           path: "dairy",
-          element: <Dairy />,
+          element: lazyPage(Dairy),
         },
 
         // SEAFOOD
         {
           path: "seafood",
-          element: <SeaFood />,
+          element: lazyPage(SeaFood),
         },
 
         // ALL PRODUCTS
         {
           path: "allproducts",
-          element: <AllProducts />,
+          element: lazyPage(AllProducts),
         },
 
         // ABOUT
         {
           path: "about",
-          element: <AboutUs />,
+          element: lazyPage(AboutUs),
         },
 
         // PROCESSES
         {
           path: "processes",
-          element: <Processes />,
+          element: lazyPage(Processes),
         },
 
         // CONTACT
         {
           path: "contact",
-          element: <ContactUs />,
+          element: lazyPage(ContactUs),
         },
 
         // CART
         {
           path: "cart",
-          element: <Cart />,
+          element: lazyPage(Cart),
         },
 
         // WISHLIST
         {
           path: "wishlist",
-          element: <Wishlist />,
+          element: lazyPage(Wishlist),
         },
 
         // CHECKOUT
         {
           path: "checkout",
-          element: <Checkout />,
+          element: lazyPage(Checkout),
         },
         // ORDERS
         {
           path: "orders",
-          element: <Orders />,
+          element: lazyPage(Orders),
         },
 
         // ORDER DETAILS
         {
           path: "orders/:id",
-          element: <OrderDetails />,
+          element: lazyPage(OrderDetails),
         },
 
       ],
@@ -146,34 +148,34 @@ function App() {
 
     {
       path: "/login",
-      element: <Login />,
+      element: lazyPage(Login),
     },
 
     {
       path: "/register",
-      element: <Register />,
+      element: lazyPage(Register),
     },
 
     {
       path: "/admin/login",
-      element: <AdminLogin />,
+      element: lazyPage(AdminLogin),
     },
 
     {
       path: "/forgot-password",
-      element: <ForgotPassword />,
+      element: lazyPage(ForgotPassword),
     },
 
     {
       path: "/reset-password",
-      element: <ResetPassword />,
+      element: lazyPage(ResetPassword),
     },
 
     {
       path: "/admin",
       element: (
         <AdminRoute>
-          <AdminDashboard />
+          {lazyPage(AdminDashboard)}
         </AdminRoute>
       ),
     },
@@ -188,7 +190,7 @@ function App() {
 
       element: (
         <ProtectedRoute>
-          <Profile />
+          {lazyPage(Profile)}
         </ProtectedRoute>
       ),
 

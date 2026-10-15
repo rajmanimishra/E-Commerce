@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { invalidateProducts } from "../utils/products";
 
 const API = import.meta.env.VITE_API_URL || (
     import.meta.env.DEV
@@ -168,6 +169,7 @@ export default function AdminDashboard() {
             setProductForm(emptyProduct);
             selectImage(null);
             setNotice(data.message);
+            invalidateProducts();
             setRefresh((value) => value + 1);
         } catch (requestError) {
             setError(requestError.message || "Unable to save this product.");
@@ -186,6 +188,7 @@ export default function AdminDashboard() {
                 method: "DELETE",
             });
             setNotice(data.message);
+            invalidateProducts();
             setRefresh((value) => value + 1);
         } catch (requestError) {
             setError(requestError.message || "Unable to remove this product.");
