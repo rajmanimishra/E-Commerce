@@ -1,38 +1,8 @@
-import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { createBrowserRouter, RouterProvider, Link } from "react-router-dom";
 
-// Layout & Static Pages
+// Layout & Route Guards
 import Layout from "./components/Layout/Layout";
-import Home from "./components/Home/Home";
-import AboutUs from "./components/AboutUs/AboutUs";
-import Processes from "./components/Processes/Processes";
-import ContactUs from "./components/ContactUs/ContactUs";
-
-// Products Catalog Pages
-import Fruits from "./components/Fruits/Fruits";
-import Dairy from "./components/Dairy/Dairy";
-import SeaFood from "./components/SeaFood/SeaFood";
-import AllProducts from "./components/AllProducts/AllProducts";
-
-// Auth & Password Pages
-import Login from "./components/Login/Login";
-import Register from "./components/Register/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-
-// Customer Protected Pages
-import Cart from "./components/Cart/Cart";
-import Wishlist from "./components/Wishlist/Wishlist";
-import Checkout from "./components/Checkout/Checkout";
-import Orders from "./components/Orders/Orders";
-import OrderDetails from "./pages/OrderDetails";
-import Profile from "./components/Profile/Profile";
-
-// Admin Pages
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
-
-// Route Guards
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import AdminRoute from "./components/ProtectedRoute/AdminRoute";
 
@@ -40,32 +10,69 @@ import AdminRoute from "./components/ProtectedRoute/AdminRoute";
 import { CartProvider } from "./components/CartContext/CartContext";
 import { WishlistProvider } from "./components/CartContext/WishlistContext";
 
-// ⚡ 1. Router को कंपोनेंट के बाहर रखें ताकि context री-रेंडर पर router री-क्रिएट न हो
+// Lazy-loaded Components (बेहतर परफॉरमेंस और फ़ास्ट लोडिंग के लिए)
+const Home = lazy(() => import("./components/Home/Home"));
+const Fruits = lazy(() => import("./components/Fruits/Fruits"));
+const Dairy = lazy(() => import("./components/Dairy/Dairy"));
+const SeaFood = lazy(() => import("./components/SeaFood/SeaFood"));
+const AllProducts = lazy(() => import("./components/AllProducts/AllProducts"));
+const AboutUs = lazy(() => import("./components/AboutUs/AboutUs"));
+const Processes = lazy(() => import("./components/Processes/Processes"));
+const ContactUs = lazy(() => import("./components/ContactUs/ContactUs"));
+
+const Login = lazy(() => import("./components/Login/Login"));
+const Register = lazy(() => import("./components/Register/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+
+const Cart = lazy(() => import("./components/Cart/Cart"));
+const Wishlist = lazy(() => import("./components/Wishlist/Wishlist"));
+const Checkout = lazy(() => import("./components/Checkout/Checkout"));
+const Orders = lazy(() => import("./components/Orders/Orders"));
+const OrderDetails = lazy(() => import("./pages/OrderDetails"));
+const Profile = lazy(() => import("./components/Profile/Profile"));
+
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+
+// Suspense Loader Wrapper
+const lazyPage = (Component) => (
+  <Suspense
+    fallback={
+      <div className="flex h-[60vh] items-center justify-center text-stone-500 font-medium">
+        Loading...
+      </div>
+    }
+  >
+    <Component />
+  </Suspense>
+);
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Layout />,
     children: [
       // =========================================
-      // PUBLIC BROWSING (बिना लॉगिन के प्रोडक्ट्स देख सकें)
+      // PUBLIC BROWSING (Layout के साथ)
       // =========================================
-      { index: true, element: <Home /> },
-      { path: "fruits", element: <Fruits /> },
-      { path: "dairy", element: <Dairy /> },
-      { path: "seafood", element: <SeaFood /> },
-      { path: "allproducts", element: <AllProducts /> },
-      { path: "about", element: <AboutUs /> },
-      { path: "processes", element: <Processes /> },
-      { path: "contact", element: <ContactUs /> },
+      { index: true, element: lazyPage(Home) },
+      { path: "fruits", element: lazyPage(Fruits) },
+      { path: "dairy", element: lazyPage(Dairy) },
+      { path: "seafood", element: lazyPage(SeaFood) },
+      { path: "allproducts", element: lazyPage(AllProducts) },
+      { path: "about", element: lazyPage(AboutUs) },
+      { path: "processes", element: lazyPage(Processes) },
+      { path: "contact", element: lazyPage(ContactUs) },
 
       // =========================================
-      // CUSTOMER PROTECTED ROUTES (लॉगिन अनिवार्य)
+      // CUSTOMER PROTECTED ROUTES (Layout + Login अनिवार्य)
       // =========================================
       {
         path: "cart",
         element: (
           <ProtectedRoute>
-            <Cart />
+            {lazyPage(Cart)}
           </ProtectedRoute>
         ),
       },
@@ -73,7 +80,7 @@ const router = createBrowserRouter([
         path: "wishlist",
         element: (
           <ProtectedRoute>
-            <Wishlist />
+            {lazyPage(Wishlist)}
           </ProtectedRoute>
         ),
       },
@@ -81,7 +88,7 @@ const router = createBrowserRouter([
         path: "checkout",
         element: (
           <ProtectedRoute>
-            <Checkout />
+            {lazyPage(Checkout)}
           </ProtectedRoute>
         ),
       },
@@ -89,7 +96,7 @@ const router = createBrowserRouter([
         path: "orders",
         element: (
           <ProtectedRoute>
-            <Orders />
+            {lazyPage(Orders)}
           </ProtectedRoute>
         ),
       },
@@ -97,7 +104,7 @@ const router = createBrowserRouter([
         path: "orders/:id",
         element: (
           <ProtectedRoute>
-            <OrderDetails />
+            {lazyPage(OrderDetails)}
           </ProtectedRoute>
         ),
       },
@@ -105,7 +112,7 @@ const router = createBrowserRouter([
         path: "profile",
         element: (
           <ProtectedRoute>
-            <Profile />
+            {lazyPage(Profile)}
           </ProtectedRoute>
         ),
       },
@@ -115,20 +122,20 @@ const router = createBrowserRouter([
   // =========================================
   // AUTHENTICATION & RECOVERY (बिना Layout के Clean UI)
   // =========================================
-  { path: "/login", element: <Login /> },
-  { path: "/register", element: <Register /> },
-  { path: "/forgot-password", element: <ForgotPassword /> },
-  { path: "/reset-password", element: <ResetPassword /> },
+  { path: "/login", element: lazyPage(Login) },
+  { path: "/register", element: lazyPage(Register) },
+  { path: "/forgot-password", element: lazyPage(ForgotPassword) },
+  { path: "/reset-password", element: lazyPage(ResetPassword) },
 
   // =========================================
   // ADMIN ROUTES
   // =========================================
-  { path: "/admin/login", element: <AdminLogin /> },
+  { path: "/admin/login", element: lazyPage(AdminLogin) },
   {
     path: "/admin",
     element: (
       <AdminRoute>
-        <AdminDashboard />
+        {lazyPage(AdminDashboard)}
       </AdminRoute>
     ),
   },
@@ -139,15 +146,15 @@ const router = createBrowserRouter([
   {
     path: "*",
     element: (
-      <div className="flex h-screen flex-col items-center justify-center bg-stone-50 text-center px-4">
+      <div className="flex h-screen flex-col items-center justify-center bg-stone-50 px-4 text-center">
         <h1 className="text-4xl font-extrabold text-stone-800">404</h1>
         <p className="mt-2 text-stone-600">Page not found.</p>
-        <a
-          href="/"
+        <Link
+          to="/"
           className="mt-4 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700"
         >
           Return Home
-        </a>
+        </Link>
       </div>
     ),
   },

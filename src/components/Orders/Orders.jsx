@@ -4,26 +4,26 @@ import { useNavigate } from "react-router-dom";
 import { getProductImage } from "../../utils/productImage";
 
 // Product Images
-import Banana from "../../assets/banana.png";
-import Tofu from "../../assets/tofu.png";
-import Yogurt from "../../assets/yogurt.png";
-import Slice_Cheese from "../../assets/slice-cheese.png";
-import Shrimp from "../../assets/shrimp.png";
-import Salmon from "../../assets/salmon.png";
-import RicottaCheese from "../../assets/ricotta-cheese.png";
-import Pineapple from "../../assets/pineapple.png";
-import Milk from "../../assets/milk.png";
-import Lettuce from "../../assets/lettuce.png";
-import Kiwi from "../../assets/kiwi.png";
-import Grapes from "../../assets/grapes.png";
-import Eggs from "../../assets/eggs.png";
-import Eggplant from "../../assets/eggplant.png";
-import Cheese from "../../assets/cheese.png";
-import Capsicum from "../../assets/capsicum.png";
-import Cabbage from "../../assets/cabbage.png";
-import Butter from "../../assets/butter.png";
-import Broccoli from "../../assets/broccoli.png";
-import Beef from "../../assets/beef.png";
+import Banana from "../../assets/banana.webp";
+import Tofu from "../../assets/tofu.webp";
+import Yogurt from "../../assets/yogurt.webp";
+import Slice_Cheese from "../../assets/slice-cheese.webp";
+import Shrimp from "../../assets/shrimp.webp";
+import Salmon from "../../assets/salmon.webp";
+import RicottaCheese from "../../assets/ricotta-cheese.webp";
+import Pineapple from "../../assets/pineapple.webp";
+import Milk from "../../assets/milk.webp";
+import Lettuce from "../../assets/lettuce.webp";
+import Kiwi from "../../assets/kiwi.webp";
+import Grapes from "../../assets/grapes.webp";
+import Eggs from "../../assets/eggs.webp";
+import Eggplant from "../../assets/eggplant.webp";
+import Cheese from "../../assets/cheese.webp";
+import Capsicum from "../../assets/capsicum.webp";
+import Cabbage from "../../assets/cabbage.webp";
+import Butter from "../../assets/butter.webp";
+import Broccoli from "../../assets/broccoli.webp";
+import Beef from "../../assets/beef.webp";
 
 const API = "https://e-commerce-z6p4.onrender.com";
 
