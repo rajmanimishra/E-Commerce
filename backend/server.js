@@ -1,8 +1,8 @@
-
 const express = require("express");
 const cors = require("cors");
 const dns = require("node:dns");
 
+// Atlas SRV resolution fix (local dev)
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require("dotenv").config();
@@ -39,13 +39,34 @@ app.get("/", (req, res) => {
     });
 });
 
-// Connect MongoDB
-connectDB();
+// 404 Not Found Handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: "Route not found"
+    });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Internal Server Error"
+    });
+});
 
 // Port
 const PORT = process.env.PORT || 3000;
 
-// Start Server
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Connect DB first, then Start Server
+connectDB()
+    .then(() => {
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error("Database connection failed:", err.message);
+        process.exit(1);
+    });

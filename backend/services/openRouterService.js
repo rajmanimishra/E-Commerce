@@ -1,4 +1,3 @@
-
 const OpenAI = require("openai");
 
 const {
@@ -20,523 +19,221 @@ const {
     removeFromWishlist
 } = require("../tools/wishlistTools");
 
-
 const client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: process.env.OPENROUTER_API_KEY
 });
 
+// ⚡ TIP 1: हाई-स्पीड मॉडल इस्तेमाल करें जो 400-600ms में रिस्पॉन्ड करता है
+// उदा. "google/gemini-2.0-flash-001" या "meta-llama/llama-3.3-70b-instruct"
+const MODEL_NAME = process.env.AI_MODEL || "google/gemini-2.0-flash-001";
 
-async function chatWithAI({ message, userId }) {
-
-    const tools = [
-
-        // =========================
-        // PRODUCT SEARCH
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "searchProducts",
-                description: "Search grocery products by name or maximum price.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        query: {
-                            type: "string",
-                            description: "Product name such as milk, eggs, bread or cheese."
-                        },
-                        maxPrice: {
-                            type: "number",
-                            description: "Maximum price of the product."
-                        }
-                    }
-                }
-            }
-        },
-
-
-        // =========================
-        // GET PRODUCT
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "getProduct",
-                description: "Get a specific grocery product using its MongoDB ID.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        }
-                    },
-                    required: ["productId"]
-                }
-            }
-        },
-
-
-        // =========================
-        // ADD TO CART
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "addToCart",
-                description: "Add a grocery product to the authenticated user's cart.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        },
-                        quantity: {
-                            type: "integer",
-                            description: "Quantity to add."
-                        }
-                    },
-                    required: ["productId", "quantity"]
-                }
-            }
-        },
-
-
-        // =========================
-        // GET CART
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "getCart",
-                description: "Get all products from the authenticated user's cart.",
-                parameters: {
-                    type: "object",
-                    properties: {}
-                }
-            }
-        },
-
-
-        // =========================
-        // REMOVE FROM CART
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "removeFromCart",
-                description: "Remove a product completely from the user's cart.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        }
-                    },
-                    required: ["productId"]
-                }
-            }
-        },
-
-
-        // =========================
-        // UPDATE CART QUANTITY
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "updateCartQuantity",
-                description: "Change the quantity of a product already in the user's cart.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        },
-                        quantity: {
-                            type: "integer",
-                            description: "New quantity."
-                        }
-                    },
-                    required: ["productId", "quantity"]
-                }
-            }
-        },
-
-
-        // =========================
-        // CLEAR CART
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "clearCart",
-                description: "Remove all products from the authenticated user's cart.",
-                parameters: {
-                    type: "object",
-                    properties: {}
-                }
-            }
-        },
-
-
-        // =========================
-        // ADD TO WISHLIST
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "addToWishlist",
-                description: "Add a grocery product to the authenticated user's wishlist.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        }
-                    },
-                    required: ["productId"]
-                }
-            }
-        },
-
-
-        // =========================
-        // GET WISHLIST
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "getWishlist",
-                description: "Get all products from the authenticated user's wishlist.",
-                parameters: {
-                    type: "object",
-                    properties: {}
-                }
-            }
-        },
-
-
-        // =========================
-        // REMOVE FROM WISHLIST
-        // =========================
-
-        {
-            type: "function",
-            function: {
-                name: "removeFromWishlist",
-                description: "Remove a product completely from the user's wishlist.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        productId: {
-                            type: "string",
-                            description: "MongoDB product ID."
-                        }
-                    },
-                    required: ["productId"]
+// ⚡ TIP 2: टूल्स को फ़ंक्शन के बाहर रखें ताकि हर रिक्वेस्ट पर री-क्रिएट न हों
+const tools = [
+    {
+        type: "function",
+        function: {
+            name: "searchProducts",
+            description: "Search grocery products by name or maximum price.",
+            parameters: {
+                type: "object",
+                properties: {
+                    query: { type: "string", description: "Product name such as milk, bread." },
+                    maxPrice: { type: "number", description: "Maximum price of the product." }
                 }
             }
         }
-    ];
+    },
+    {
+        type: "function",
+        function: {
+            name: "getProduct",
+            description: "Get product details using MongoDB ID.",
+            parameters: {
+                type: "object",
+                properties: {
+                    productId: { type: "string", description: "MongoDB product ID." }
+                },
+                required: ["productId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "addToCart",
+            description: "Add a product to cart.",
+            parameters: {
+                type: "object",
+                properties: {
+                    productId: { type: "string" },
+                    quantity: { type: "integer" }
+                },
+                required: ["productId", "quantity"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getCart",
+            description: "Get all cart items.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "removeFromCart",
+            description: "Remove product from cart.",
+            parameters: {
+                type: "object",
+                properties: { productId: { type: "string" } },
+                required: ["productId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "updateCartQuantity",
+            description: "Update product quantity in cart.",
+            parameters: {
+                type: "object",
+                properties: {
+                    productId: { type: "string" },
+                    quantity: { type: "integer" }
+                },
+                required: ["productId", "quantity"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "clearCart",
+            description: "Empty entire cart.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "addToWishlist",
+            description: "Add product to wishlist.",
+            parameters: {
+                type: "object",
+                properties: { productId: { type: "string" } },
+                required: ["productId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "getWishlist",
+            description: "Get wishlist items.",
+            parameters: { type: "object", properties: {} }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "removeFromWishlist",
+            description: "Remove product from wishlist.",
+            parameters: {
+                type: "object",
+                properties: { productId: { type: "string" } },
+                required: ["productId"]
+            }
+        }
+    }
+];
 
+// टूल डिस्पैचर
+async function executeTool(name, args, userId) {
+    switch (name) {
+        case "searchProducts": return await searchProducts(args);
+        case "getProduct": return await getProduct(args.productId);
+        case "addToCart": return await addToCart({ userId, productId: args.productId, quantity: args.quantity });
+        case "getCart": return await getCart({ userId });
+        case "removeFromCart": return await removeFromCart({ userId, productId: args.productId });
+        case "updateCartQuantity": return await updateCartQuantity({ userId, productId: args.productId, quantity: args.quantity });
+        case "clearCart": return await clearCart({ userId });
+        case "addToWishlist": return await addToWishlist({ userId, productId: args.productId });
+        case "getWishlist": return await getWishlist({ userId });
+        case "removeFromWishlist": return await removeFromWishlist({ userId, productId: args.productId });
+        default: return { success: false, message: "Unknown tool" };
+    }
+}
 
-    // =========================
-    // AI INSTRUCTIONS
-    // =========================
-
+async function chatWithAI({ message, userId }) {
     const messages = [
-
         {
             role: "system",
-            content: `
-You are Grocify AI, a grocery shopping assistant.
-
-You help users find products, manage their cart and manage their wishlist.
-
-IMPORTANT RULES:
-
-1. When the user asks to find or search for a product, use searchProducts.
-
-2. When the user mentions a maximum price, pass that amount as maxPrice.
-
-3. Never invent products, prices or product IDs.
-
-4. Use only product information returned by the database.
-
-5. When the user asks to add something to the cart, use addToCart.
-
-6. When the user asks to see the cart, use getCart.
-
-7. When the user asks to remove something from the cart, use removeFromCart.
-
-8. When the user asks to change the quantity of a cart item, use updateCartQuantity.
-
-9. When the user asks to clear, empty or delete everything from the cart, use clearCart.
-
-10. When the user asks to add a product to the wishlist, use addToWishlist.
-
-11. When the user asks to see the wishlist, use getWishlist.
-
-12. When the user asks to remove a product from the wishlist, use removeFromWishlist.
-
-13. The userId is provided by the backend.
-
-14. Never ask the user for their userId.
-
-15. Never modify another user's cart or wishlist.
-
-16. If the user gives a budget, do not exceed that budget.
-
-17. Use the actual prices returned by MongoDB.
-
-18. If a requested product does not exist, clearly tell the user.
-
-19. Never show MongoDB product IDs to the user.
-
-20. Keep responses short, clear and grocery-focused.
-
-21. If an action is successfully completed, clearly tell the user what happened.
-`
+            content: "You are Grocify AI, a fast grocery shopping assistant. Help users manage cart, wishlist and search products. Keep responses concise and practical. Never reveal MongoDB IDs."
         },
-
         {
             role: "user",
             content: message
         }
     ];
 
-
-    // =========================
-    // FIRST AI REQUEST
-    // =========================
-
     let response = await client.chat.completions.create({
-        model: "openrouter/free",
+        model: MODEL_NAME,
         messages,
         tools,
-        tool_choice: "auto"
+        tool_choice: "auto",
+        temperature: 0.2 // कम टेम्परेचर से आउटपुट तेज़ और टोकन कम खर्च होते हैं
     });
 
-
     let assistantMessage = response.choices[0].message;
-
     let rounds = 0;
 
-
-    // =========================
-    // TOOL CALL LOOP
-    // =========================
-
     while (assistantMessage.tool_calls?.length) {
-
         rounds++;
-
-        if (rounds > 10) {
-            return "I couldn't complete the request. Please try again.";
-        }
-
+        if (rounds > 5) break;
 
         messages.push(assistantMessage);
 
-
-        for (const toolCall of assistantMessage.tool_calls) {
-
-            const functionName = toolCall.function.name;
-
+        // ⚡ TIP 3: टूल्स को Promise.all से पैरेलल रन करें
+        const toolPromises = assistantMessage.tool_calls.map(async (toolCall) => {
             let args = {};
-
             try {
-                args = JSON.parse(
-                    toolCall.function.arguments || "{}"
-                );
-            } catch (error) {
-
-                console.error("Invalid tool arguments:", error);
-
-                messages.push({
+                args = JSON.parse(toolCall.function.arguments || "{}");
+            } catch (err) {
+                return {
                     role: "tool",
                     tool_call_id: toolCall.id,
-                    content: JSON.stringify({
-                        success: false,
-                        message: "Invalid tool arguments."
-                    })
-                });
-
-                continue;
-            }
-
-
-            console.log("AI TOOL:", functionName);
-            console.log("AI TOOL ARGS:", args);
-
-
-            let result;
-
-
-            // =========================
-            // PRODUCT TOOLS
-            // =========================
-
-            if (functionName === "searchProducts") {
-
-                result = await searchProducts(args);
-
-            }
-
-            else if (functionName === "getProduct") {
-
-                result = await getProduct(
-                    args.productId
-                );
-
-            }
-
-
-            // =========================
-            // CART TOOLS
-            // =========================
-
-            else if (functionName === "addToCart") {
-
-                result = await addToCart({
-                    userId,
-                    productId: args.productId,
-                    quantity: args.quantity
-                });
-
-            }
-
-            else if (functionName === "getCart") {
-
-                result = await getCart({
-                    userId
-                });
-
-            }
-
-            else if (functionName === "removeFromCart") {
-
-                result = await removeFromCart({
-                    userId,
-                    productId: args.productId
-                });
-
-            }
-
-            else if (functionName === "updateCartQuantity") {
-
-                result = await updateCartQuantity({
-                    userId,
-                    productId: args.productId,
-                    quantity: args.quantity
-                });
-
-            }
-
-            else if (functionName === "clearCart") {
-
-                result = await clearCart({
-                    userId
-                });
-
-            }
-
-
-            // =========================
-            // WISHLIST TOOLS
-            // =========================
-
-            else if (functionName === "addToWishlist") {
-
-                result = await addToWishlist({
-                    userId,
-                    productId: args.productId
-                });
-
-            }
-
-            else if (functionName === "getWishlist") {
-
-                result = await getWishlist({
-                    userId
-                });
-
-            }
-
-            else if (functionName === "removeFromWishlist") {
-
-                result = await removeFromWishlist({
-                    userId,
-                    productId: args.productId
-                });
-
-            }
-
-
-            // =========================
-            // UNKNOWN TOOL
-            // =========================
-
-            else {
-
-                result = {
-                    success: false,
-                    message: "Unknown tool."
+                    content: JSON.stringify({ success: false, message: "Invalid JSON args" })
                 };
             }
 
+            const result = await executeTool(toolCall.function.name, args, userId);
 
-            console.log("TOOL RESULT:", result);
-
-
-            messages.push({
+            return {
                 role: "tool",
                 tool_call_id: toolCall.id,
                 content: JSON.stringify(result)
-            });
-        }
-
-
-        // =========================
-        // ASK AI AGAIN
-        // =========================
-
-        response = await client.chat.completions.create({
-            model: "openrouter/free",
-            messages,
-            tools,
-            tool_choice: "auto"
+            };
         });
 
+        const toolResponses = await Promise.all(toolPromises);
+        messages.push(...toolResponses);
+
+        // अगला रिस्पॉन्स जनरेट करें
+        response = await client.chat.completions.create({
+            model: MODEL_NAME,
+            messages,
+            tools,
+            tool_choice: "auto",
+            temperature: 0.2
+        });
 
         assistantMessage = response.choices[0].message;
     }
 
-
-    // =========================
-    // FINAL RESPONSE
-    // =========================
-
     return assistantMessage.content || "Done!";
 }
 
-
-module.exports = {
-    chatWithAI
-};
-
+module.exports = { chatWithAI };

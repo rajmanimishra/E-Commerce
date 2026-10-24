@@ -1,20 +1,9 @@
-
 const Cart = require("../schema/cartSchema");
 const Product = require("../productSchema/productSchema");
 
 async function addToCart({ userId, productId, quantity = 1 }) {
     try {
-        const product = await Product.findById(productId);
-
-        if (!product) {
-            return {
-                success: false,
-                message: "Product not found"
-            };
-        }
-
         const qty = Number(quantity);
-
         if (!Number.isInteger(qty) || qty <= 0) {
             return {
                 success: false,
@@ -22,30 +11,30 @@ async function addToCart({ userId, productId, quantity = 1 }) {
             };
         }
 
-        let cartItem = await Cart.findOne({
-            userId,
-            productId
-        });
-
-        if (cartItem) {
-            cartItem.quantity += qty;
-            await cartItem.save();
-        } else {
-            cartItem = await Cart.create({
-                userId,
-                productId,
-                quantity: qty
-            });
+        // 1. प्रोडक्ट की केवल जरूरी फ़ील्ड्स फेच करें (पूरा डॉक्यूमेंट नहीं)
+        const product = await Product.findById(productId).select("title price").lean();
+        if (!product) {
+            return {
+                success: false,
+                message: "Product not found"
+            };
         }
+
+        // 2. findOne + save/create के बजाय सिंगल एटॉमिक UPSERT ऑपरेशन
+        const updatedCartItem = await Cart.findOneAndUpdate(
+            { userId, productId },
+            { $inc: { quantity: qty } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
 
         return {
             success: true,
-            message: `${ qty } ${ product.title } added to cart`,
+            message: `${qty} ${product.title} added to cart`,
             product: {
                 id: product._id.toString(),
                 title: product.title,
                 price: product.price,
-                quantity: cartItem.quantity
+                quantity: updatedCartItem.quantity
             }
         };
 
@@ -55,20 +44,23 @@ async function addToCart({ userId, productId, quantity = 1 }) {
     }
 }
 
-
 async function getCart({ userId }) {
     try {
+        // .lean() जोड़ने से Mongoose डॉक्यूमेंट ओवरहेड खत्म हो जाता है और परफॉर्मेंस 4x-5x फ़ास्ट हो जाती है
         const cartItems = await Cart.find({ userId })
-            .populate("productId");
+            .populate("productId", "title price")
+            .lean();
 
-        return cartItems.map(item => ({
-            cartItemId: item._id.toString(),
-            productId: item.productId._id.toString(),
-            title: item.productId.title,
-            price: item.productId.price,
-            quantity: item.quantity,
-            total: item.productId.price * item.quantity
-        }));
+        return cartItems
+            .filter(item => item.productId) // अगर कोई प्रोडक्ट डिलीट हो चुका हो तो क्रैश से बचाव
+            .map(item => ({
+                cartItemId: item._id.toString(),
+                productId: item.productId._id.toString(),
+                title: item.productId.title,
+                price: item.productId.price,
+                quantity: item.quantity,
+                total: item.productId.price * item.quantity
+            }));
 
     } catch (error) {
         console.error("Get cart error:", error);
@@ -76,13 +68,9 @@ async function getCart({ userId }) {
     }
 }
 
-
 async function removeFromCart({ userId, productId }) {
     try {
-        const cartItem = await Cart.findOneAndDelete({
-            userId,
-            productId
-        });
+        const cartItem = await Cart.findOneAndDelete({ userId, productId }).lean();
 
         if (!cartItem) {
             return {
@@ -91,11 +79,9 @@ async function removeFromCart({ userId, productId }) {
             };
         }
 
-        const product = await Product.findById(productId);
-
         return {
             success: true,
-            message: `${ product ? product.title : "Product" } removed from cart`
+            message: "Product removed from cart"
         };
 
     } catch (error) {
@@ -104,11 +90,9 @@ async function removeFromCart({ userId, productId }) {
     }
 }
 
-
 async function updateCartQuantity({ userId, productId, quantity }) {
     try {
         const qty = Number(quantity);
-
         if (!Number.isInteger(qty) || qty <= 0) {
             return {
                 success: false,
@@ -116,10 +100,14 @@ async function updateCartQuantity({ userId, productId, quantity }) {
             };
         }
 
-        const cartItem = await Cart.findOne({
-            userId,
-            productId
-        });
+        const [cartItem, product] = await Promise.all([
+            Cart.findOneAndUpdate(
+                { userId, productId },
+                { $set: { quantity: qty } },
+                { new: true }
+            ).lean(),
+            Product.findById(productId).select("title price").lean()
+        ]);
 
         if (!cartItem) {
             return {
@@ -128,22 +116,15 @@ async function updateCartQuantity({ userId, productId, quantity }) {
             };
         }
 
-        cartItem.quantity = qty;
-        await cartItem.save();
-
-        const product = await Product.findById(productId);
-
         return {
             success: true,
-            message: `${ product ? product.title : "Product" } quantity updated`,
+            message: `${product ? product.title : "Product"} quantity updated`,
             product: {
                 id: productId,
                 title: product ? product.title : "Product",
                 price: product ? product.price : 0,
                 quantity: cartItem.quantity,
-                total: product
-                    ? product.price * cartItem.quantity
-                    : 0
+                total: product ? product.price * cartItem.quantity : 0
             }
         };
 
@@ -153,25 +134,19 @@ async function updateCartQuantity({ userId, productId, quantity }) {
     }
 }
 
-
 async function clearCart({ userId }) {
     try {
-        const result = await Cart.deleteMany({
-            userId
-        });
-
+        const result = await Cart.deleteMany({ userId });
         return {
             success: true,
             message: "Cart cleared successfully",
             deletedItems: result.deletedCount
         };
-
     } catch (error) {
         console.error("Clear cart error:", error);
         throw error;
     }
 }
-
 
 module.exports = {
     addToCart,
@@ -180,4 +155,3 @@ module.exports = {
     updateCartQuantity,
     clearCart
 };
-

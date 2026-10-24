@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const mongoose = require("mongoose");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
@@ -9,24 +9,32 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 
 const Order = require("../schema/orderSchema");
 const CartItem = require("../schema/cartSchema");
+const Product = require("../productSchema/productSchema");
 
-// ======================================
-// Razorpay Setup
-// ======================================
-
+// Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// सिग्नेचर वेरिफिकेशन हेल्पर
+function verifyRazorpaySignature(orderId, paymentId, signature) {
+  if (!process.env.RAZORPAY_KEY_SECRET) return false;
+  const body = `${orderId}|${paymentId}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+  return expectedSignature === signature;
+}
+
 // ======================================
-// CREATE RAZORPAY ORDER
+// 1. CREATE RAZORPAY ORDER
 // POST /api/orders/create-razorpay-order
 // ======================================
-
 router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
   try {
-    const amount = Number(req.body.amount || req.body.totalAmount);
+    const { items } = req.body;
 
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
       return res.status(500).json({
@@ -35,15 +43,42 @@ router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
       });
     }
 
-    if (!amount || amount <= 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Valid amount is required",
+        message: "Items are required to generate order amount.",
+      });
+    }
+
+    // ⚡ सिक्योरिटी: प्राइसेज को सीधे डेटाबेस से फेच करके सर्वर पर कैलकुलेट करें
+    const productIds = items.map((i) => i.productId);
+    const dbProducts = await Product.find({ _id: { $in: productIds } })
+      .select("price")
+      .lean();
+
+    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p.price]));
+
+    let calculatedTotal = 0;
+    for (const item of items) {
+      const price = productMap.get(item.productId);
+      if (price === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "One or more products in your order do not exist.",
+        });
+      }
+      calculatedTotal += price * Number(item.quantity || 1);
+    }
+
+    if (calculatedTotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid order amount is required.",
       });
     }
 
     const payment = await razorpay.orders.create({
-      amount: Math.round(amount * 100),
+      amount: Math.round(calculatedTotal * 100), // paise
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     });
@@ -53,32 +88,28 @@ router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
       orderId: payment.id,
       amount: payment.amount,
       currency: payment.currency,
+      calculatedTotal,
     });
   } catch (error) {
     console.error("Create Razorpay Order Error:", error);
-
     res.status(500).json({
       success: false,
-      message: "Unable to create payment",
-      error: error.message,
+      message: "Unable to create payment order.",
     });
   }
 });
 
 // ======================================
-// PLACE ORDER
+// 2. PLACE ORDER
 // POST /api/orders
 // ======================================
-
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const {
       items,
       customer,
-      subtotal,
-      discount,
-      totalAmount,
-      coupon,
+      discount = 0,
+      coupon = "",
       paymentMethod,
       razorpayOrderId,
       razorpayPaymentId,
@@ -88,18 +119,12 @@ router.post("/", authMiddleware, async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Order must contain at least one product",
-      });
-    }
-
-    if (!customer) {
-      return res.status(400).json({
-        success: false,
-        message: "Delivery details are required",
+        message: "Order must contain at least one product.",
       });
     }
 
     if (
+      !customer ||
       !customer.fullName ||
       !customer.mobile ||
       !customer.address ||
@@ -109,47 +134,7 @@ router.post("/", authMiddleware, async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Please provide all delivery details",
-      });
-    }
-
-    if (!req.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid user session. Please login again.",
-      });
-    }
-
-    const normalizedItems = items.map((item) => ({
-      productId: item.productId,
-      title: String(item.title || "").trim(),
-      price: Number(item.price),
-      quantity: Number(item.quantity),
-    }));
-
-    const invalidItem = normalizedItems.find(
-      (item) =>
-        !item.productId ||
-        !item.title ||
-        !Number.isFinite(item.price) ||
-        item.price < 0 ||
-        !Number.isInteger(item.quantity) ||
-        item.quantity < 1
-    );
-
-    if (invalidItem) {
-      return res.status(400).json({
-        success: false,
-        message: "One or more cart items are invalid. Please refresh your cart and try again.",
-      });
-    }
-
-    const orderTotal = Number(totalAmount);
-
-    if (!Number.isFinite(orderTotal) || orderTotal <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Order total must be greater than zero.",
+        message: "Complete delivery details are required.",
       });
     }
 
@@ -160,14 +145,71 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
+    // ⚡ ऑनलाइन पेमेंट वैलिडेशन (क्रिप्टोग्राफ़िक सिग्नेचर चेक)
+    if (paymentMethod === "ONLINE") {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment details missing for online transaction.",
+        });
+      }
+
+      const isValidSignature = verifyRazorpaySignature(
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature
+      );
+
+      if (!isValidSignature) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment verification failed. Tampered signature.",
+        });
+      }
+    }
+
+    // ⚡ डेटाबेस से प्रोडक्ट की सही कीमत और नाम लोड करें (Tamper-proof)
+    const productIds = items.map((i) => i.productId);
+    const dbProducts = await Product.find({ _id: { $in: productIds } })
+      .select("title price")
+      .lean();
+
+    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p]));
+
+    let subtotal = 0;
+    const normalizedItems = [];
+
+    for (const item of items) {
+      const dbProduct = productMap.get(item.productId);
+      const qty = Number(item.quantity);
+
+      if (!dbProduct || !Number.isInteger(qty) || qty < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product or quantity in cart.",
+        });
+      }
+
+      subtotal += dbProduct.price * qty;
+      normalizedItems.push({
+        productId: dbProduct._id,
+        title: dbProduct.title,
+        price: dbProduct.price,
+        quantity: qty,
+      });
+    }
+
+    const appliedDiscount = Math.max(0, Number(discount) || 0);
+    const finalAmount = Math.max(0, subtotal - appliedDiscount);
+
     const order = await Order.create({
       userId: req.userId,
       items: normalizedItems,
       customer,
-      subtotal: Number(subtotal) || 0,
-      discount: Number(discount) || 0,
-      totalAmount: orderTotal,
-      coupon: coupon || "",
+      subtotal,
+      discount: appliedDiscount,
+      totalAmount: finalAmount,
+      coupon,
       paymentMethod,
       paymentStatus: paymentMethod === "ONLINE" ? "Paid" : "Pending",
       orderStatus: "Placed",
@@ -176,6 +218,7 @@ router.post("/", authMiddleware, async (req, res) => {
       razorpaySignature: razorpaySignature || "",
     });
 
+    // कार्ट को बैकग्राउंड में साफ़ करें
     await CartItem.deleteMany({ userId: req.userId });
 
     res.status(201).json({
@@ -185,85 +228,87 @@ router.post("/", authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error("Place Order Error:", error);
-
     res.status(500).json({
       success: false,
       message: "Failed to place order",
-      error: error.message,
     });
   }
 });
 
 // ======================================
-// VERIFY PAYMENT
-// POST /api/orders/verify-payment
-// ======================================
-
-router.post("/verify-payment", authMiddleware, async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment details are missing.",
-      });
-    }
-
-    if (!process.env.RAZORPAY_KEY_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: "Razorpay secret is not configured on the server.",
-      });
-    }
-
-    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment verification failed",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Payment verified",
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpaySignature: razorpay_signature,
-    });
-  } catch (error) {
-    console.error("Verification Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Verification failed",
-      error: error.message,
-    });
-  }
-});
-
-// ======================================
-// GET MY ORDERS
+// 3. GET USER ORDERS
 // GET /api/orders
 // ======================================
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.userId })
+      .populate("items.productId", "title price image")
+      .sort({ createdAt: -1 })
+      .lean();
 
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error("Get Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+    });
+  }
+});
+
+// ======================================
+// 4. GET SINGLE ORDER
+// GET /api/orders/:id
+// ======================================
+router.get("/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid order ID." });
+  }
+
+  try {
+    const order = await Order.findOne({
+      _id: id,
+      userId: req.userId,
+    })
+      .populate("items.productId", "title price image")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.error("Get Single Order Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch order",
+    });
+  }
+});
+
+// ======================================
+// 5. ADMIN: GET ALL ORDERS
+// GET /api/orders/admin/all
+// ======================================
 router.get("/admin/all", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("userId", "name email")
       .populate("items.productId", "title price image")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -279,7 +324,16 @@ router.get("/admin/all", authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
+// ======================================
+// 6. ADMIN: UPDATE STATUS
+// PATCH /api/orders/:id/status
+// ======================================
 router.patch("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid order ID." });
+  }
+
   try {
     const allowedStatuses = [
       "Placed",
@@ -299,10 +353,10 @@ router.patch("/:id/status", authMiddleware, adminMiddleware, async (req, res) =>
     }
 
     const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { orderStatus },
+      id,
+      { $set: { orderStatus } },
       { new: true, runValidators: true }
-    );
+    ).lean();
 
     if (!order) {
       return res.status(404).json({
@@ -318,65 +372,9 @@ router.patch("/:id/status", authMiddleware, adminMiddleware, async (req, res) =>
     });
   } catch (error) {
     console.error("Update Order Status Error:", error);
-    res.status(error.name === "CastError" ? 400 : 500).json({
-      success: false,
-      message: error.name === "CastError" ? "Invalid order." : "Unable to update order status.",
-    });
-  }
-});
-
-router.get("/", authMiddleware, async (req, res) => {
-  try {
-    const orders = await Order.find({ userId: req.userId })
-      .populate("items.productId", "title price image")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      orders,
-    });
-  } catch (error) {
-    console.error("Get Orders Error:", error);
-
     res.status(500).json({
       success: false,
-      message: "Failed to fetch orders",
-      error: error.message,
-    });
-  }
-});
-
-// ======================================
-// GET SINGLE ORDER
-// GET /api/orders/:id
-// ======================================
-
-router.get("/:id", authMiddleware, async (req, res) => {
-  try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      userId: req.userId,
-    }).populate("items.productId", "title price image");
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      order,
-    });
-  } catch (error) {
-    console.error("Get Single Order Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch order",
-      error: error.message,
+      message: "Unable to update order status.",
     });
   }
 });

@@ -5,12 +5,15 @@ const mongoose = require("mongoose");
 const connectDB = require("../db/db");
 const User = require("../schema/schema");
 
+const BCRYPT_SALT_ROUNDS = 12;
+
 async function createAdmin() {
     const { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
     const email = ADMIN_EMAIL?.trim().toLowerCase();
+    const name = ADMIN_NAME?.trim();
 
-    if (!ADMIN_NAME?.trim() || !email || !ADMIN_PASSWORD) {
-        throw new Error("Set ADMIN_NAME, ADMIN_EMAIL, and ADMIN_PASSWORD before creating an admin.");
+    if (!name || !email || !ADMIN_PASSWORD) {
+        throw new Error("ADMIN_NAME, ADMIN_EMAIL, and ADMIN_PASSWORD must be defined in .env");
     }
 
     if (ADMIN_PASSWORD.length < 12) {
@@ -19,32 +22,44 @@ async function createAdmin() {
 
     await connectDB();
 
-    const password = await bcrypt.hash(ADMIN_PASSWORD, 12);
-    await User.findOneAndUpdate(
+    // 1. पासवर्ड हैश करें
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_SALT_ROUNDS);
+
+    // 2. एडमिन को क्रिएट या अपडेट करें
+    const adminUser = await User.findOneAndUpdate(
         { email },
         {
-            name: ADMIN_NAME.trim(),
-            email,
-            password,
-            role: "admin",
-            isActive: true,
+            $set: {
+                name,
+                email,
+                password: hashedPassword,
+                role: "admin",
+                isActive: true,
+            }
         },
         {
             upsert: true,
-            returnDocument: "after",
+            new: true, // Mongoose में 'new: true' या 'returnDocument: "after"' दोनों मान्य हैं
             runValidators: true,
             setDefaultsOnInsert: true
         }
-    );
+    ).lean(); // lean() से अननेसेसरी Mongoose डॉक्यूमेंट रैपिंग से बचा जा सकता है
 
-    console.log(`Admin account ready for ${email}.`);
+    console.log(`Admin account successfully provisioned for: ${adminUser.email}`);
 }
 
 createAdmin()
+    .then(() => {
+        process.exitCode = 0;
+    })
     .catch((error) => {
-        console.error("Could not create the admin account:", error.message);
+        console.error("Admin creation failed:", error.message);
         process.exitCode = 1;
     })
     .finally(async () => {
-        await mongoose.disconnect();
+        try {
+            await mongoose.disconnect();
+        } catch (err) {
+            console.error("Error disconnecting MongoDB:", err.message);
+        }
     });

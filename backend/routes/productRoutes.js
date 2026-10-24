@@ -36,7 +36,6 @@ const imageUpload = multer({
         if (!imageTypes[file.mimetype]) {
             return callback(new Error("Choose a JPG, PNG, or WebP image."));
         }
-
         callback(null, true);
     },
 }).single("imageFile");
@@ -59,7 +58,6 @@ function getImageBucket() {
     if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
         throw new Error("Database is not connected.");
     }
-
     return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
         bucketName: "productImages",
     });
@@ -88,13 +86,20 @@ async function storeImage(file) {
     return uploadStream.id;
 }
 
-async function removeStoredImage(imageId) {
-    if (!imageId) return;
-
+// URL से GridFS Image ID निकालकर डिलीट करने वाला सेफ हेल्पर
+async function removeStoredImage(imageIdentifier) {
+    if (!imageIdentifier) return;
     try {
-        await getImageBucket().delete(new mongoose.Types.ObjectId(imageId));
+        let imageId = imageIdentifier;
+        if (typeof imageIdentifier === "string" && imageIdentifier.includes("/api/products/images/")) {
+            imageId = imageIdentifier.split("/api/products/images/")[1];
+        }
+
+        if (mongoose.Types.ObjectId.isValid(imageId)) {
+            await getImageBucket().delete(new mongoose.Types.ObjectId(imageId));
+        }
     } catch (error) {
-        console.error("Unable to clean up an uploaded product image:", error);
+        console.error("Unable to clean up product image:", error.message);
     }
 }
 
@@ -105,6 +110,66 @@ function isValidPrice(price) {
         Number(price) >= 0
     );
 }
+
+// GET - Get all products (⚡ Optimized with .lean() and selective fields)
+router.get("/", async (req, res) => {
+    try {
+        const products = await Product.find()
+            .select("title price image category")
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            products,
+        });
+    } catch (error) {
+        console.error("Get Products Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch products",
+        });
+    }
+});
+
+// GET - Serve a stored product image (GridFS)
+router.get("/images/:id", async (req, res) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ success: false, message: "Invalid image ID." });
+    }
+
+    try {
+        const bucket = getImageBucket();
+        const files = await bucket.find({ _id: new mongoose.Types.ObjectId(id) }).toArray();
+        const file = files[0];
+
+        if (!file) {
+            return res.status(404).json({ success: false, message: "Image not found." });
+        }
+
+        res.set({
+            "Content-Type": file.metadata?.contentType || "application/octet-stream",
+            "Content-Length": file.length,
+            "Content-Disposition": "inline",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+        });
+
+        const downloadStream = bucket.openDownloadStream(file._id);
+        downloadStream.on("error", (error) => {
+            console.error("Read Product Image Error:", error);
+            if (!res.headersSent) {
+                res.status(500).json({ success: false, message: "Unable to load product image." });
+            } else {
+                res.destroy(error);
+            }
+        });
+        downloadStream.pipe(res);
+    } catch (error) {
+        console.error("Get Product Image Error:", error);
+        res.status(500).json({ success: false, message: "Unable to load product image." });
+    }
+});
 
 // POST - Add a new product
 router.post("/", authMiddleware, adminMiddleware, receiveProductImage, async (req, res) => {
@@ -151,8 +216,13 @@ router.post("/", authMiddleware, adminMiddleware, receiveProductImage, async (re
     }
 });
 
-// PUT - Update a product
+// PUT - Update a product (⚡ Cleans old image if replaced)
 router.put("/:id", authMiddleware, adminMiddleware, receiveProductImage, async (req, res) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ success: false, message: "Invalid product ID." });
+    }
+
     let storedImageId;
 
     try {
@@ -170,56 +240,65 @@ router.put("/:id", authMiddleware, adminMiddleware, receiveProductImage, async (
             });
         }
 
+        const existingProduct = await Product.findById(id).select("image").lean();
+        if (!existingProduct) {
+            return res.status(404).json({ success: false, message: "Product not found." });
+        }
+
         const imagePath = req.file
             ? `/api/products/images/${(storedImageId = await storeImage(req.file))}`
             : image.trim();
 
-        const product = await Product.findByIdAndUpdate(
-            req.params.id,
+        const updatedProduct = await Product.findByIdAndUpdate(
+            id,
             {
-                title: title.trim(),
-                price: Number(price),
-                image: imagePath,
-                category: category.trim(),
+                $set: {
+                    title: title.trim(),
+                    price: Number(price),
+                    image: imagePath,
+                    category: category.trim(),
+                }
             },
             { new: true, runValidators: true }
-        );
+        ).lean();
 
-        if (!product) {
-            await removeStoredImage(storedImageId);
-            return res.status(404).json({
-                success: false,
-                message: "Product not found.",
-            });
+        // अगर नई इमेज अपलोड हुई है तो पुरानी GridFS इमेज को डिलीट करें
+        if (req.file && existingProduct.image && existingProduct.image !== imagePath) {
+            await removeStoredImage(existingProduct.image);
         }
 
         res.status(200).json({
             success: true,
             message: "Product updated successfully.",
-            product,
+            product: updatedProduct,
         });
     } catch (error) {
         await removeStoredImage(storedImageId);
         console.error("Update Product Error:", error);
-        res.status(error.statusCode || (error.name === "CastError" ? 400 : 500)).json({
+        res.status(error.statusCode || 500).json({
             success: false,
-            message: error.statusCode
-                ? error.message
-                : error.name === "CastError" ? "Invalid product." : "Failed to update product.",
+            message: error.statusCode ? error.message : "Failed to update product.",
         });
     }
 });
 
-// DELETE - Remove a product
+// DELETE - Remove a product (⚡ Cleans associated GridFS image)
 router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ success: false, message: "Invalid product ID." });
+    }
+
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
+        const product = await Product.findByIdAndDelete(id).lean();
 
         if (!product) {
-            return res.status(404).json({
-                success: false,
-                message: "Product not found.",
-            });
+            return res.status(404).json({ success: false, message: "Product not found." });
+        }
+
+        // प्रोडक्ट हटने के बाद उसकी GridFS इमेज को भी डिलीट करें
+        if (product.image) {
+            await removeStoredImage(product.image);
         }
 
         res.status(200).json({
@@ -228,80 +307,9 @@ router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
         });
     } catch (error) {
         console.error("Delete Product Error:", error);
-        res.status(error.name === "CastError" ? 400 : 500).json({
-            success: false,
-            message: error.name === "CastError" ? "Invalid product." : "Failed to remove product.",
-        });
-    }
-});
-
-// GET - Serve a stored product image
-router.get("/images/:id", async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid image.",
-        });
-    }
-
-    try {
-        const bucket = getImageBucket();
-        const [file] = await bucket.find({
-            _id: new mongoose.Types.ObjectId(req.params.id),
-        }).toArray();
-
-        if (!file) {
-            return res.status(404).json({
-                success: false,
-                message: "Image not found.",
-            });
-        }
-
-        res.set({
-            "Content-Type": file.metadata?.contentType || "application/octet-stream",
-            "Content-Length": file.length,
-            "Content-Disposition": "inline",
-            "Cache-Control": "public, max-age=31536000, immutable",
-            "X-Content-Type-Options": "nosniff",
-        });
-
-        const downloadStream = bucket.openDownloadStream(file._id);
-        downloadStream.on("error", (error) => {
-            console.error("Read Product Image Error:", error);
-            if (res.headersSent) {
-                res.destroy(error);
-            } else {
-                res.status(500).json({
-                    success: false,
-                    message: "Unable to load product image.",
-                });
-            }
-        });
-        downloadStream.pipe(res);
-    } catch (error) {
-        console.error("Get Product Image Error:", error);
         res.status(500).json({
             success: false,
-            message: "Unable to load product image.",
-        });
-    }
-});
-
-// GET - Get all products
-router.get("/", async (req, res) => {
-    try {
-        const products = await Product.find();
-
-        res.status(200).json({
-            success: true,
-            products,
-        });
-    } catch (error) {
-        console.error("Get Products Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to fetch products",
-            error: error.message,
+            message: "Failed to remove product.",
         });
     }
 });

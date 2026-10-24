@@ -1,12 +1,14 @@
-
 const Wishlist = require("../wishlistSchema/wishlistSchema");
 const Product = require("../productSchema/productSchema");
-
 
 // Add product to wishlist
 async function addToWishlist({ userId, productId }) {
     try {
-        const product = await Product.findById(productId);
+        // 1. प्रोडक्ट चेक और विशलिस्ट डुप्लीकेट चेक दोनों को एक साथ (Parallel) चलाएँ
+        const [product, existingItem] = await Promise.all([
+            Product.findById(productId).select("title price").lean(),
+            Wishlist.findOne({ userId, productId }).select("_id").lean()
+        ]);
 
         if (!product) {
             return {
@@ -15,11 +17,6 @@ async function addToWishlist({ userId, productId }) {
             };
         }
 
-        const existingItem = await Wishlist.findOne({
-            userId,
-            productId
-        });
-
         if (existingItem) {
             return {
                 success: false,
@@ -27,6 +24,7 @@ async function addToWishlist({ userId, productId }) {
             };
         }
 
+        // 2. विशलिस्ट में इंसर्ट करें
         await Wishlist.create({
             userId,
             productId
@@ -43,27 +41,36 @@ async function addToWishlist({ userId, productId }) {
         };
 
     } catch (error) {
+        // अगर MongoDB Unique Index की वजह से डुप्लीकेट एरर (E11000) आए तो उसे सुरक्षित हैंडल करें
+        if (error.code === 11000) {
+            return {
+                success: false,
+                message: "Product is already in your wishlist"
+            };
+        }
         console.error("Add to wishlist error:", error);
         throw error;
     }
 }
 
-
 // Get wishlist
 async function getWishlist({ userId }) {
     try {
-        const wishlist = await Wishlist.find({
-            userId
-        }).populate("productId");
+        // .lean() जोड़ने से मेमोरी और टाइम दोनों काफी कम हो जाते हैं
+        const wishlist = await Wishlist.find({ userId })
+            .populate("productId", "title price category image")
+            .lean();
 
-        return wishlist.map(item => ({
-            wishlistItemId: item._id.toString(),
-            productId: item.productId._id.toString(),
-            title: item.productId.title,
-            price: item.productId.price,
-            category: item.productId.category,
-            image: item.productId.image
-        }));
+        return wishlist
+            .filter(item => item.productId) // अगर कभी प्रोडक्ट डिलीट हो जाए तो null क्रैश से बचाव
+            .map(item => ({
+                wishlistItemId: item._id.toString(),
+                productId: item.productId._id.toString(),
+                title: item.productId.title,
+                price: item.productId.price,
+                category: item.productId.category,
+                image: item.productId.image
+            }));
 
     } catch (error) {
         console.error("Get wishlist error:", error);
@@ -71,14 +78,14 @@ async function getWishlist({ userId }) {
     }
 }
 
-
 // Remove product from wishlist
 async function removeFromWishlist({ userId, productId }) {
     try {
+        // डिलीट करने के बाद अलग से Product.findById करने की जरूरत नहीं है
         const deletedItem = await Wishlist.findOneAndDelete({
             userId,
             productId
-        });
+        }).lean();
 
         if (!deletedItem) {
             return {
@@ -87,11 +94,9 @@ async function removeFromWishlist({ userId, productId }) {
             };
         }
 
-        const product = await Product.findById(productId);
-
         return {
             success: true,
-            message: `${product ? product.title : "Product"} removed from wishlist`
+            message: "Product removed from wishlist"
         };
 
     } catch (error) {
@@ -100,10 +105,8 @@ async function removeFromWishlist({ userId, productId }) {
     }
 }
 
-
 module.exports = {
     addToWishlist,
     getWishlist,
     removeFromWishlist
 };
-
