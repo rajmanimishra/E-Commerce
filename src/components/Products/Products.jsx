@@ -123,13 +123,19 @@ const Products = () => {
     };
 
 
-    // Filter products
+    // Match the UI's Protein tab to products stored as Meat or Protein.
     const filteredCards =
         activeTab === "All"
             ? cards
-            : cards.filter(
-                (card) => card.category === activeTab
-            );
+            : cards.filter((card) => {
+                const category = card.category?.toLowerCase();
+                const selectedCategories =
+                    activeTab === "Protein"
+                        ? ["meat", "protein"]
+                        : [activeTab.toLowerCase()];
+
+                return selectedCategories.includes(category);
+            });
 
 
     return (

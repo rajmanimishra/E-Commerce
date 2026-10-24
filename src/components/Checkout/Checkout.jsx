@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "../CartContext/CartContext";
 import { useNavigate } from "react-router-dom";
 
@@ -271,7 +271,10 @@ const Checkout = () => {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                     },
-                    body: JSON.stringify({ amount: finalTotal }),
+                    body: JSON.stringify({
+                        items: orderItems,
+                        coupon: coupon.trim().toUpperCase(),
+                    }),
                 }
             );
 

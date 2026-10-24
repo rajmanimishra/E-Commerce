@@ -28,13 +28,87 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
   return expectedSignature === signature;
 }
 
+const VALID_COUPON = "GROCIFY10";
+
+async function calculateOrderAmounts(items, coupon) {
+  if (!Array.isArray(items) || items.length === 0) {
+    const error = new Error("Order must contain at least one product.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (items.some((item) =>
+    !mongoose.Types.ObjectId.isValid(item?.productId) ||
+    !Number.isInteger(Number(item.quantity)) ||
+    Number(item.quantity) < 1
+  )) {
+    const error = new Error("Invalid product or quantity in cart.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const productIds = items.map((item) => item.productId);
+  const dbProducts = await Product.find({ _id: { $in: productIds } })
+    .select("title price")
+    .lean();
+  const productMap = new Map(dbProducts.map((product) => [product._id.toString(), product]));
+
+  let subtotal = 0;
+  const normalizedItems = [];
+
+  for (const item of items) {
+    const product = productMap.get(item.productId);
+    if (!product) {
+      const error = new Error("One or more products in your order do not exist.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const quantity = Number(item.quantity);
+    subtotal += product.price * quantity;
+    normalizedItems.push({
+      productId: product._id,
+      title: product.title,
+      price: product.price,
+      quantity,
+    });
+  }
+
+  subtotal = Math.round((subtotal + Number.EPSILON) * 100) / 100;
+  const appliedCoupon =
+    typeof coupon === "string" && coupon.trim().toUpperCase() === VALID_COUPON
+      ? VALID_COUPON
+      : "";
+  const discount = appliedCoupon
+    ? Math.round(subtotal * 0.1 * 100) / 100
+    : 0;
+
+  return {
+    items: normalizedItems,
+    subtotal,
+    discount,
+    totalAmount: Math.max(0, subtotal - discount),
+    coupon: appliedCoupon,
+  };
+}
+
+async function isCapturedPayment(orderId, paymentId, totalAmount) {
+  const payment = await razorpay.payments.fetch(paymentId);
+  return (
+    payment.order_id === orderId &&
+    payment.status === "captured" &&
+    payment.amount === Math.round(totalAmount * 100) &&
+    payment.currency === "INR"
+  );
+}
+
 // ======================================
 // 1. CREATE RAZORPAY ORDER
 // POST /api/orders/create-razorpay-order
 // ======================================
 router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, coupon } = req.body;
 
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
       return res.status(500).json({
@@ -43,34 +117,9 @@ router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
       });
     }
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Items are required to generate order amount.",
-      });
-    }
+    const amounts = await calculateOrderAmounts(items, coupon);
 
-    // ⚡ सिक्योरिटी: प्राइसेज को सीधे डेटाबेस से फेच करके सर्वर पर कैलकुलेट करें
-    const productIds = items.map((i) => i.productId);
-    const dbProducts = await Product.find({ _id: { $in: productIds } })
-      .select("price")
-      .lean();
-
-    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p.price]));
-
-    let calculatedTotal = 0;
-    for (const item of items) {
-      const price = productMap.get(item.productId);
-      if (price === undefined) {
-        return res.status(400).json({
-          success: false,
-          message: "One or more products in your order do not exist.",
-        });
-      }
-      calculatedTotal += price * Number(item.quantity || 1);
-    }
-
-    if (calculatedTotal <= 0) {
+    if (amounts.totalAmount <= 0) {
       return res.status(400).json({
         success: false,
         message: "Valid order amount is required.",
@@ -78,7 +127,7 @@ router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
     }
 
     const payment = await razorpay.orders.create({
-      amount: Math.round(calculatedTotal * 100), // paise
+      amount: Math.round(amounts.totalAmount * 100),
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     });
@@ -88,13 +137,65 @@ router.post("/create-razorpay-order", authMiddleware, async (req, res) => {
       orderId: payment.id,
       amount: payment.amount,
       currency: payment.currency,
-      calculatedTotal,
+      calculatedTotal: amounts.totalAmount,
+      subtotal: amounts.subtotal,
+      discount: amounts.discount,
+      coupon: amounts.coupon,
     });
   } catch (error) {
     console.error("Create Razorpay Order Error:", error);
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Unable to create payment order.",
+      message: error.statusCode ? error.message : "Unable to create payment order.",
+    });
+  }
+});
+
+router.post("/verify-payment", authMiddleware, async (req, res) => {
+  try {
+    const {
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      razorpay_signature: signature,
+    } = req.body;
+
+    if (!orderId || !paymentId || !signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment details are required.",
+      });
+    }
+
+    if (!verifyRazorpaySignature(orderId, paymentId, signature)) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed. Tampered signature.",
+      });
+    }
+
+    const payment = await razorpay.payments.fetch(paymentId);
+    if (
+      payment.order_id !== orderId ||
+      payment.status !== "captured" ||
+      payment.currency !== "INR"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment has not been captured for this order.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      razorpayOrderId: orderId,
+      razorpayPaymentId: paymentId,
+      razorpaySignature: signature,
+    });
+  } catch (error) {
+    console.error("Verify Razorpay Payment Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify payment.",
     });
   }
 });
@@ -108,7 +209,6 @@ router.post("/", authMiddleware, async (req, res) => {
     const {
       items,
       customer,
-      discount = 0,
       coupon = "",
       paymentMethod,
       razorpayOrderId,
@@ -145,7 +245,8 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    // ⚡ ऑनलाइन पेमेंट वैलिडेशन (क्रिप्टोग्राफ़िक सिग्नेचर चेक)
+    const amounts = await calculateOrderAmounts(items, coupon);
+
     if (paymentMethod === "ONLINE") {
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
         return res.status(400).json({
@@ -166,50 +267,23 @@ router.post("/", authMiddleware, async (req, res) => {
           message: "Payment verification failed. Tampered signature.",
         });
       }
-    }
 
-    // ⚡ डेटाबेस से प्रोडक्ट की सही कीमत और नाम लोड करें (Tamper-proof)
-    const productIds = items.map((i) => i.productId);
-    const dbProducts = await Product.find({ _id: { $in: productIds } })
-      .select("title price")
-      .lean();
-
-    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p]));
-
-    let subtotal = 0;
-    const normalizedItems = [];
-
-    for (const item of items) {
-      const dbProduct = productMap.get(item.productId);
-      const qty = Number(item.quantity);
-
-      if (!dbProduct || !Number.isInteger(qty) || qty < 1) {
+      if (!(await isCapturedPayment(razorpayOrderId, razorpayPaymentId, amounts.totalAmount))) {
         return res.status(400).json({
           success: false,
-          message: "Invalid product or quantity in cart.",
+          message: "Payment details do not match the order.",
         });
       }
-
-      subtotal += dbProduct.price * qty;
-      normalizedItems.push({
-        productId: dbProduct._id,
-        title: dbProduct.title,
-        price: dbProduct.price,
-        quantity: qty,
-      });
     }
-
-    const appliedDiscount = Math.max(0, Number(discount) || 0);
-    const finalAmount = Math.max(0, subtotal - appliedDiscount);
 
     const order = await Order.create({
       userId: req.userId,
-      items: normalizedItems,
+      items: amounts.items,
       customer,
-      subtotal,
-      discount: appliedDiscount,
-      totalAmount: finalAmount,
-      coupon,
+      subtotal: amounts.subtotal,
+      discount: amounts.discount,
+      totalAmount: amounts.totalAmount,
+      coupon: amounts.coupon,
       paymentMethod,
       paymentStatus: paymentMethod === "ONLINE" ? "Paid" : "Pending",
       orderStatus: "Placed",
@@ -228,9 +302,9 @@ router.post("/", authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error("Place Order Error:", error);
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Failed to place order",
+      message: error.statusCode ? error.message : "Failed to place order",
     });
   }
 });
