@@ -1,9 +1,6 @@
+
 const express = require("express");
 const cors = require("cors");
-const dns = require("node:dns");
-
-// Atlas SRV resolution fix (local dev)
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require("dotenv").config();
 
@@ -50,6 +47,7 @@ app.use((req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
+
     res.status(err.status || 500).json({
         success: false,
         message: err.message || "Internal Server Error"
@@ -59,7 +57,7 @@ app.use((err, req, res, next) => {
 // Port
 const PORT = process.env.PORT || 3000;
 
-// Connect DB first, then Start Server
+// Connect DB first, then start server
 connectDB()
     .then(() => {
         app.listen(PORT, "0.0.0.0", () => {
